@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>火線交鋒 FIRELINE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="/client/style.css">
+</head>
+<body>
+
+<canvas id="view" aria-label="遊戲畫面"></canvas>
+
+<div id="hud" hidden>
+  <div id="vital" class="pad-t">
+    <div class="hp-row"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg><span id="hpNum">100</span><div class="hpbar"><i id="hpFill"></i></div></div>
+    <div class="sub-row"><span id="armorChip" class="chip" hidden>護甲 −30% 傷害</span><span id="bootsChip" class="chip" hidden>靴子 +12% 移速</span><span id="glovesChip" class="chip" hidden>手甲 −40% 後座力</span><span id="protChip" class="chip prot" hidden>重生保護</span></div>
+    <div class="money"><span class="coin" aria-hidden="true"></span><span id="moneyNum">$800</span></div>
+  </div>
+  <div id="score" class="pad-t">
+    <div class="plate a"><small>TEAM<br>A</small><b id="killsA">0</b></div>
+    <div class="clock" id="clock"><b id="timeNum">10:00</b><small>TIME</small></div>
+    <div class="plate b"><b id="killsB">0</b><small>TEAM<br>B</small></div>
+  </div>
+  <div id="feed" class="pad-t" style="margin-top:0"></div>
+  <div id="weapon">
+    <div class="wname" id="wName">P9 標配手槍</div>
+    <div class="ammo" id="ammoBox"><b id="magNum">12</b><span>/ <span id="resNum">48</span></span></div>
+    <div class="slots"><span id="slot1">1 主武器</span><span id="slot2">2 手槍</span><span id="slot3">3 小刀</span></div>
+    <div id="reloadBar"><i id="reloadFill"></i></div>
+  </div>
+  <div id="areaTag"></div><canvas id="mini" width="205" height="145" aria-label="小地圖"></canvas>
+  <div id="zoneChip" hidden>購買區 · 按 <kbd>B</kbd> 開啟購買選單</div>
+  <div id="cross" class="xh" aria-hidden="true"></div>
+  <div id="hit" aria-hidden="true"></div>
+  <div id="killNote" aria-live="polite"></div>
+  <div id="popups"></div>
+  <div id="hurtDir" aria-hidden="true"></div>
+  <div id="vignette" aria-hidden="true"></div>
+  <div id="scope" hidden></div>
+</div>
+
+<div id="touch">
+  <div id="joyBase"><div id="joyKnob"></div></div>
+  <button class="tbtn fire" id="tFire" style="right:28px;bottom:120px">射擊</button>
+  <button class="tbtn" id="tReload" style="right:126px;bottom:124px">換彈</button>
+  <button class="tbtn" id="tSwap" style="right:126px;bottom:40px">切換</button>
+  <button class="tbtn" id="tScope" style="right:210px;bottom:70px" hidden>開鏡</button>
+  <button class="tbtn" id="tBuy" style="left:50%;margin-left:-32px;bottom:170px" hidden>購買</button>
+  <button class="tbtn" id="tBoard" style="right:28px;top:calc(90px + env(safe-area-inset-top,0px));width:48px;height:48px;font-size:11px">戰績</button>
+</div>
+
+<section id="menu" class="screen">
+  <div class="menu-in">
+    <div class="eyebrow">FIRELINE · TEAM DEATHMATCH · 5 VS 5</div>
+    <h1 class="title">火線交鋒<span>FIRELINE</span></h1>
+    <ul class="rules">
+      <li><b>勝利條件</b>時間結束時擊殺數高的隊伍獲勝，相同為平手</li>
+      <li><b>經濟</b>擊殺 +$300，同一條命第 3 殺起每殺再 +$100</li>
+      <li><b>購買</b>只能在己方購買區購買。對戰時間越短，商店越便宜</li>
+      <li><b>死亡</b>3 秒後重生，金幣保留，武器需重購</li>
+    </ul>
+    <div class="mapsel"><div class="mapsel-h">選擇地圖</div><div class="maps" id="mapPick"></div><ol class="areas" id="mapAreas" aria-label="重點區域"></ol></div>
+    <div class="opts">
+      <div class="opt"><span>對戰時間</span><div class="seg" id="segTime"><button type="button" data-v="180" aria-pressed="false">3 分鐘</button><button type="button" data-v="300" aria-pressed="false">5 分鐘</button><button type="button" data-v="600" aria-pressed="true">10 分鐘</button></div><span class="note" id="priceNote">商店原價</span></div>
+      <div class="opt"><span>AI 難度</span><div class="seg" id="segDiff"><button type="button" data-v="easy" aria-pressed="false">新手</button><button type="button" data-v="std" aria-pressed="true">標準</button><button type="button" data-v="hard" aria-pressed="false">老手</button></div></div>
+      <div class="opt"><label for="sens">滑鼠靈敏度</label><input id="sens" type="range" min="0.6" max="3" step="0.1" value="1.4"></div>
+    </div>
+    <div class="menu-actions"><button class="cta" id="startBtn" type="button">單機對戰（AI）</button><button class="cta alt" id="onlineBtn" type="button">線上對戰</button><button class="ghost" id="armoryBtn" type="button">武器與裝備一覽</button><button class="ghost" id="xhBtn" type="button">準心設定</button></div>
+    <div class="keys" id="keysHelp"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動 · 滑鼠 瞄準 · 左鍵 射擊 · 右鍵 狙擊鏡 · <kbd>R</kbd> 換彈 · <kbd>B</kbd> 購買 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>/<kbd>Q</kbd> 切換武器（3 為小刀） · <kbd>Tab</kbd> 戰績 · <kbd>M</kbd> 靜音 · <kbd>Esc</kbd> 暫停</div>
+  </div>
+</section>
+
+<section id="pause" class="screen" hidden>
+  <div class="card pause-card">
+    <div class="eyebrow">PAUSED</div>
+    <h2>暫停中</h2>
+    <p style="margin:0;color:var(--muted);font-size:14px">點擊繼續後會鎖定滑鼠。按 Esc 可隨時暫停。</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="cta" id="resumeBtn" type="button">繼續</button><button class="ghost" id="xhBtn2" type="button">準心設定</button><button class="ghost" id="quitBtn" type="button">結束並回到主選單</button></div>
+  </div>
+</section>
+
+<section id="armory" class="screen" hidden>
+  <div class="card arm-card" role="dialog" aria-label="武器與裝備一覽">
+    <div class="buy-head"><h2><small>ARMORY</small>武器與裝備一覽 <span class="note" id="armNote"></span></h2><button class="ghost" id="armClose" type="button">關閉</button></div>
+    <div class="arm-body" id="armBody"></div>
+  </div>
+</section>
+
+<section id="online" class="screen" hidden>
+  <div class="card lobby-card" role="dialog" aria-label="線上對戰">
+    <div class="buy-head"><h2><small>ONLINE · 5 VS 5</small>線上對戰</h2><button class="ghost" id="olClose" type="button">返回主選單</button></div>
+    <div class="lobby-body">
+      <div id="olJoin" class="ol-join">
+        <div class="opt"><label for="olName">玩家名稱</label><input id="olName" type="text" maxlength="12" value="玩家" autocomplete="off"></div>
+        <div class="ol-row"><button class="cta" id="olCreate" type="button">建立房間</button><span class="or">或輸入朋友的房間代碼</span><input id="olCode" type="text" maxlength="4" placeholder="例如 K7QX" autocomplete="off" aria-label="房間代碼"><button class="ghost" id="olJoinBtn" type="button">加入房間</button></div>
+        <p class="ol-status" id="olStatus" role="status"></p>
+      </div>
+      <div id="olLobby" hidden>
+        <div class="ol-code"><span>房間代碼</span><b id="olCodeShow">----</b><button class="ghost" id="olCopy" type="button">複製</button></div>
+        <div class="board-grid" id="olTeams"></div>
+        <div class="ol-set"><div class="opt"><span>地圖</span><div class="seg" id="olMap"></div></div><div class="opt"><span>對戰時間</span><div class="seg" id="olLen"></div></div></div>
+        <div class="ol-row"><button class="ghost" id="olSwap" type="button">換隊</button><button class="cta" id="olStart" type="button">開始對戰</button><button class="ghost" id="olLeave" type="button">離開房間</button></div>
+        <p class="ol-status" id="olHint" role="status"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="xhScr" class="screen" hidden>
+  <div class="card xh-card" role="dialog" aria-label="準心設定">
+    <div class="buy-head"><h2><small>CROSSHAIR</small>準心設定</h2><button class="ghost" id="xhReset" type="button">恢復預設</button><button class="ghost" id="xhDone" type="button">完成</button></div>
+    <div class="xh-body">
+      <div class="xh-prev" aria-label="準心預覽"><div class="xh" id="xhDemo"></div><span>亮背景</span><span>暗背景</span></div>
+      <div class="xh-ctrl">
+        <div class="opt"><span>樣式</span><div class="seg" id="xhStyle"><button type="button" data-v="cross">十字</button><button type="button" data-v="t">T 型</button><button type="button" data-v="circle">圓圈</button><button type="button" data-v="dot">圓點</button></div></div>
+        <div class="opt"><span>顏色</span><div class="sw" id="xhColors"></div><input type="color" id="xhCustom" aria-label="自訂顏色"></div>
+        <div class="opt"><label for="xhLen">線長</label><input id="xhLen" type="range" min="2" max="20" step="1"><output id="xhLenV"></output></div>
+        <div class="opt"><label for="xhTh">粗細</label><input id="xhTh" type="range" min="1" max="6" step="1"><output id="xhThV"></output></div>
+        <div class="opt"><label for="xhGap">中心間距</label><input id="xhGap" type="range" min="0" max="20" step="1"><output id="xhGapV"></output></div>
+        <div class="opt checks"><label><input type="checkbox" id="xhDot"> 中心點</label><label><input type="checkbox" id="xhOutline"> 黑色描邊</label><label><input type="checkbox" id="xhDyn"> 移動與射擊時擴散</label></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="deathScr" class="screen" hidden>
+  <div class="death"><div class="by" id="deathBy">你被擊殺</div><div class="cd" id="deathCd">3</div><small>金幣已保留 · 重生後回到購買區重新購買武器</small></div>
+</section>
+
+<section id="buy" class="screen" hidden>
+  <div class="card buy-card" role="dialog" aria-label="購買介面">
+    <div class="buy-head">
+      <h2><small>BUY MENU · 重生基地</small>購買武器與裝備 <span class="note" id="buyMul"></span></h2>
+      <div class="money"><span class="coin" aria-hidden="true"></span><span id="buyMoney">$0</span></div>
+      <button class="ghost" id="buyClose" type="button">關閉 (B)</button>
+    </div>
+    <div class="buy-body">
+      <div class="buy-list" id="buyList"></div>
+      <div class="buy-detail" id="buyDetail"></div>
+    </div>
+    <div class="buy-foot">離開購買區後無法購買 · 在購買區內備用彈藥自動補滿 · 死亡後武器與護甲消失，金幣保留</div>
+  </div>
+</section>
+
+<section id="board" class="screen" hidden>
+  <div class="card board-card"><div class="board-grid" id="boardGrid"></div></div>
+</section>
+
+<section id="endScr" class="screen" hidden>
+  <div class="card end-card">
+    <div class="eyebrow">MATCH OVER</div>
+    <h2 class="result" id="resultTxt">勝利</h2>
+    <div class="final"><span class="fa" id="finA">0</span><span style="color:var(--muted);font-size:18px">擊殺數</span><span class="fb" id="finB">0</span></div>
+    <div class="board-grid" id="endGrid"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="cta" id="againBtn" type="button">再來一場</button><button class="ghost" id="menuBtn" type="button">主選單</button></div>
+  </div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script type="module" src="/client/game.js"></script>
+</body>
+</html>

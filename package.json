@@ -1,0 +1,15 @@
+{
+  "name": "fireline",
+  "version": "0.1.0",
+  "description": "火線交鋒 FIRELINE — 5v5 team deathmatch browser FPS with online rooms",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
