@@ -7,6 +7,7 @@ const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const MSG_PER_SEC = 90; // state (20/s) + fire (up to ~18/s) + lobby clicks
 let nextId = 1;
 
+const log = (...a) => console.log(new Date().toLocaleTimeString('zh-TW', { hour12: false }), ...a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 function cleanName(n) {
@@ -26,7 +27,8 @@ export class Rooms {
     setInterval(() => this.tick(), 1000 / TICK_HZ);
   }
 
-  connect(ws) {
+  connect(ws, req) {
+    const ip = (req && req.socket && req.socket.remoteAddress || '').replace('::ffff:', '');
     const c = { id: nextId++, ws, name: '玩家', room: null, team: 0, msgs: 0, msgWindow: Date.now() };
     ws.on('message', (buf) => {
       const now = Date.now();
@@ -38,7 +40,8 @@ export class Rooms {
         try { this.handle(c, m); } catch (err) { console.error('message error', m.t, err); }
       }
     });
-    ws.on('close', () => this.leave(c));
+    ws.on('close', () => { if (c.room) log(`[${c.room.code}] ${c.name} 離線`); this.leave(c); });
+    log(`玩家連線 #${c.id}（${ip || '未知位址'}）`);
     ws.on('error', () => {});
     this.send(c, { t: 'welcome', id: c.id });
   }
@@ -73,17 +76,19 @@ export class Rooms {
         c.name = cleanName(m.name);
         const r = { code: this.newCode(), host: c.id, players: new Map(), settings: { map: 'desert', len: 600, diff: 'std' }, bots: [0, 0], phase: 'lobby', endAt: 0, match: null };
         this.rooms.set(r.code, r);
+        log(`[${r.code}] ${c.name} 建立房間`);
         this.join(c, r);
         break;
       }
       case 'join': {
         const r = this.rooms.get(String(m.code ?? '').toUpperCase().trim());
-        if (!r) return this.send(c, { t: 'error', msg: '找不到這個房間代碼，請確認後再試一次' });
+        if (!r) { log(`#${c.id} 找不到房間 ${String(m.code ?? '').toUpperCase()}`); return this.send(c, { t: 'error', msg: '找不到這個房間代碼，請確認後再試一次' }); }
         if (r === room) return;
         if (r.phase !== 'lobby') return this.send(c, { t: 'error', msg: '這個房間正在對戰中，請等這局結束再加入' });
         if (r.players.size >= ROOM_MAX) return this.send(c, { t: 'error', msg: `房間已滿（${ROOM_MAX} 人）` });
         this.leave(c);
         c.name = cleanName(m.name);
+        log(`[${r.code}] ${c.name} 加入房間`);
         this.join(c, r);
         break;
       }
@@ -190,6 +195,7 @@ export class Rooms {
     const random = room.settings.map === 'random';
     const mapId = random ? MAP_ORDER[(Math.random() * MAP_ORDER.length) | 0] : room.settings.map;
     room.match = new Match({ mapId, len: room.settings.len, diff: room.settings.diff, humans, bots: [this.botsFor(room, 0), this.botsFor(room, 1)] }, emit);
+    log(`[${room.code}] 開始對戰：${mapId}，${room.players.size} 位玩家 + ${this.botsFor(room, 0) + this.botsFor(room, 1)} 個 AI`);
     room.phase = 'play';
     room.endAt = now + room.settings.len * 1000;
     this.broadcast(room, { t: 'start', settings: { ...room.settings, map: mapId }, random, endAt: room.endAt, now, players: room.match.roster() });
@@ -204,6 +210,7 @@ export class Rooms {
     for (const room of this.rooms.values()) {
       if (room.phase !== 'play' || !room.match) continue;
       if (now >= room.endAt) {
+        log(`[${room.code}] 對戰結束 ${room.match.teamKills[0]} : ${room.match.teamKills[1]}`);
         room.phase = 'lobby';
         room.endAt = 0;
         this.broadcast(room, { t: 'end', tk: room.match.teamKills, sc: room.match.scores() });

@@ -592,7 +592,9 @@ document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockEl
   if(!locked&&state==='play'&&!buyOpen&&!noLock&&!isTouch){setPause(true);}});
 function lockFailed(){if(!everLocked)noLock=true;else if(state==='play'&&!buyOpen&&!locked)setPause(true);}
 document.addEventListener('pointerlockerror',lockFailed);
-function setPause(p){paused=p;$('pause').hidden=!p;if(p){trigger=false;for(const k in keys)keys[k]=false;}}
+function setPause(p,mode){paused=p;$('pause').hidden=!p;
+  const start=mode==='start';$('pauseEyebrow').textContent=start?'MATCH START':'PAUSED';$('pauseTitle').textContent=start?'對戰開始':'暫停中';
+  $('pauseText').textContent=start?'點「進入對戰」鎖定滑鼠就能開始移動和射擊。對戰時間已經在跑了。':'點擊繼續後會鎖定滑鼠。按 Esc 可隨時暫停。';$('resumeBtn').textContent=start?'進入對戰':'繼續';if(p){trigger=false;for(const k in keys)keys[k]=false;}}
 canvas.addEventListener('mousedown',ev=>{
   if(state!=='play'||paused||buyOpen)return;
   if(!locked&&!noLock&&!isTouch){requestLock();return;}
@@ -899,7 +901,7 @@ function startMatch(){
   $('menu').hidden=true;$('endScr').hidden=true;$('hud').hidden=false;$('deathScr').hidden=true;$('feed').innerHTML='';$('killNote').innerHTML='';
   for(const e of ents){e.money=START_MONEY;e.kills=0;e.deaths=0;e.streak=0;e.alive=false;e.pos.set(9999,0,9999);}
   for(const e of ents)spawn(e);
-  if(online){if(!isTouch&&!noLock)setPause(true);}else requestLock();
+  if(online){if(!isTouch&&!noLock)setPause(true,'start');}else requestLock();
   if(rolled)mapToast(rolled);
   document.querySelectorAll('#score .plate').forEach((el,i)=>el.classList.toggle('mine',i===P.team));
 }
@@ -1012,7 +1014,7 @@ function olStatus(msg,isErr){const el=$('olStatus');el.textContent=msg||'';el.cl
 async function ensureNet(){
   if(online&&online.net.ready)return online.net;
   const net=new Net();
-  olStatus('連線中…');
+  olStatus(`正在連線到 ${location.host}…`);
   await net.connect();
   online={net,room:null,endAt:0,slot:0,sendT:0,remotes:new Map()};
   net.on('room',m=>{online.room=m;renderLobby();});
@@ -1031,7 +1033,6 @@ async function ensureNet(){
   net.on('kill',onlineKill);
   net.on('close',()=>{if(!online||online.net!==net)return;const wasPlaying=state==='play';online=null;
     if(wasPlaying)toMenu();$('olJoin').hidden=false;$('olLobby').hidden=true;olStatus('與伺服器的連線中斷了',true);});
-  olStatus('');
   return net;
 }
 function openOnline(){$('menu').hidden=true;$('online').hidden=false;if(online&&online.room){renderLobby();}else{$('olJoin').hidden=false;$('olLobby').hidden=true;}}
@@ -1110,9 +1111,9 @@ function initOnlineUI(){
   $('olName').addEventListener('change',()=>{try{localStorage.setItem('fireline-name',myName());}catch(err){}});
   $('onlineBtn').addEventListener('click',openOnline);
   $('olClose').addEventListener('click',()=>{$('online').hidden=true;$('menu').hidden=false;});
-  $('olCreate').addEventListener('click',async()=>{try{initAudio();const net=await ensureNet();net.send('create',{name:myName()});}catch(err){olStatus(err.message,true);}});
+  $('olCreate').addEventListener('click',async()=>{try{initAudio();const net=await ensureNet();olStatus('已連上伺服器，正在建立房間…');net.send('create',{name:myName()});}catch(err){olStatus(err.message,true);}});
   const join=async()=>{const code=$('olCode').value.trim().toUpperCase();if(code.length!==4){olStatus('房間代碼是 4 個字元',true);return;}
-    try{initAudio();const net=await ensureNet();net.send('join',{name:myName(),code});}catch(err){olStatus(err.message,true);}};
+    try{initAudio();const net=await ensureNet();olStatus(`已連上伺服器，正在加入房間 ${code}…`);net.send('join',{name:myName(),code});}catch(err){olStatus(err.message,true);}};
   $('olJoinBtn').addEventListener('click',join);$('olCode').addEventListener('keydown',ev=>{if(ev.key==='Enter')join();});
   $('olSwap').addEventListener('click',()=>{if(!online||!online.room)return;const me=online.room.players.find(p=>p.id===online.net.id);if(me)online.net.send('team',{team:1-me.team});});
   $('olStart').addEventListener('click',()=>{initAudio();if(online)online.net.send('start',{});});

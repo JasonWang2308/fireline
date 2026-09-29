@@ -34,7 +34,7 @@ const server = http.createServer(async (req, res) => {
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 4096 });
 const rooms = new Rooms();
-wss.on('connection', (ws) => rooms.connect(ws));
+wss.on('connection', (ws, req) => rooms.connect(ws, req));
 
 server.listen(PORT, () => {
   console.log(`火線交鋒 server running: http://localhost:${PORT}`);

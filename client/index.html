@@ -77,9 +77,9 @@
 
 <section id="pause" class="screen" hidden>
   <div class="card pause-card">
-    <div class="eyebrow">PAUSED</div>
-    <h2>暫停中</h2>
-    <p style="margin:0;color:var(--muted);font-size:14px">點擊繼續後會鎖定滑鼠。按 Esc 可隨時暫停。</p>
+    <div class="eyebrow" id="pauseEyebrow">PAUSED</div>
+    <h2 id="pauseTitle">暫停中</h2>
+    <p id="pauseText" style="margin:0;color:var(--muted);font-size:14px">點擊繼續後會鎖定滑鼠。按 Esc 可隨時暫停。</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="cta" id="resumeBtn" type="button">繼續</button><button class="ghost" id="xhBtn2" type="button">準心設定</button><button class="ghost" id="quitBtn" type="button">結束並回到主選單</button></div>
   </div>
 </section>

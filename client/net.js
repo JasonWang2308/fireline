@@ -8,17 +8,19 @@ export class Net {
       const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
       this.ws = ws;
       let opened = false;
+      // a firewall that silently drops packets would otherwise leave "connecting…" on screen for a long time
+      const timer = setTimeout(() => { if (!opened) { ws.close(); reject(new Error('連線逾時：8 秒內連不上遊戲伺服器。請確認伺服器視窗還開著、網址正確，且防火牆已允許 Node.js。')); } }, 8000);
       ws.onmessage = (ev) => {
         let m;
         try { m = JSON.parse(ev.data); } catch { return; }
-        if (m.t === 'welcome') { this.id = m.id; opened = true; resolve(); }
+        if (m.t === 'welcome') { this.id = m.id; opened = true; clearTimeout(timer); resolve(); }
         if (typeof m.now === 'number') {
           const off = m.now - performance.now();
           this.offset = this.offset === null ? off : this.offset + (off - this.offset) * 0.05;
         }
         (this.handlers[m.t] || []).forEach((f) => f(m));
       };
-      ws.onerror = () => { if (!opened) reject(new Error('連不上遊戲伺服器，請確認伺服器已啟動')); };
+      ws.onerror = () => { if (!opened) { clearTimeout(timer); reject(new Error('連不上遊戲伺服器，請確認伺服器視窗還開著、網址正確。')); } };
       ws.onclose = () => { this.id = 0; (this.handlers.close || []).forEach((f) => f()); };
     });
   }
