@@ -81,14 +81,32 @@ function Start-Game {
   }
   Write-Host ''
   Write-Host "正在啟動遊戲伺服器，瀏覽器會自動打開 http://localhost:$port" -ForegroundColor Cyan
-  Write-Host '要結束遊戲時，直接關閉這個視窗即可。'
+  Write-Host '要停止伺服器請按 Q 或 Ctrl+C，會回到選單。' -ForegroundColor Yellow
   Write-Host ''
   Write-LanUrls $port
   Write-Host ''
   Start-Process cmd -ArgumentList '/c', "timeout /t 2 /nobreak >nul & start http://localhost:$port" -WindowStyle Hidden
   $env:PORT = "$port"
-  & npm.cmd start
+  # Run node directly (not npm.cmd): npm.cmd is itself a batch file, and Ctrl+C inside nested
+  # batch files makes cmd ask "Terminate batch job (Y/N)?" once per level.
+  $node = Start-Process node -ArgumentList 'server/index.js' -WorkingDirectory $GameDir -NoNewWindow -PassThru
   Remove-Item Env:PORT -ErrorAction SilentlyContinue
+  # Catch Ctrl+C ourselves so it only stops the server and never reaches cmd.
+  [Console]::TreatControlCAsInput = $true
+  try {
+    while (-not $node.HasExited) {
+      if ([Console]::KeyAvailable) {
+        $k = [Console]::ReadKey($true)
+        if ($k.Key -eq 'Q' -or ($k.Key -eq 'C' -and ($k.Modifiers -band [ConsoleModifiers]::Control))) { break }
+      }
+      Start-Sleep -Milliseconds 150
+    }
+  } finally {
+    [Console]::TreatControlCAsInput = $false
+    if (-not $node.HasExited) { Stop-Process -Id $node.Id -Force -ErrorAction SilentlyContinue }
+  }
+  Write-Host ''
+  Write-Host '遊戲伺服器已停止。' -ForegroundColor Cyan
   Wait-Menu
 }
 
