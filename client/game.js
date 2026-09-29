@@ -482,7 +482,7 @@ function playerFire(){
 function meleeHit(e,w,dmg,wk){
   const fx=-Math.sin(e.yaw),fz=-Math.cos(e.yaw);let best=null,bd=1e9;eyeOf(e,_e1);
   for(const o of ents){if(o.team===e.team||!o.alive||o.remote)continue;const dx=o.pos.x-e.pos.x,dz=o.pos.z-e.pos.z,d=Math.hypot(dx,dz);
-    if(d>w.range||Math.abs(o.pos.y-e.pos.y)>1.2)continue;if((dx*fx+dz*fz)/Math.max(d,.01)<.6)continue;if(!los(_e1,chestOf(o,_c1)))continue;if(d<bd){bd=d;best=o;}}
+    if(d>w.range||Math.abs(o.pos.y-e.pos.y)>1.2)continue;if((dx*fx+dz*fz)/Math.max(d,.01)<(w.arc||.6))continue;if(!los(_e1,chestOf(o,_c1)))continue;if(d<bd){bd=d;best=o;}}
   if(best){const back=isBehind(e,best);const killed=damage(best,e,back?Math.max(110,dmg*1.5):dmg,wk,false);if(!killed){hitMark(false);sfxTone([520],.06,.1,'square');}
     addPuff(chestOf(best),true);}
 }
@@ -561,7 +561,7 @@ function updateBot(e,dt){
     const sp=2.8*w.speed*(e.boots?1.12:1)*(inWater(e.pos.x,e.pos.z)?.6:1)*(e.healT>0?.6:1);mx=(-dz/dist*sd+dx/dist*adv)*sp;mz=(dx/dist*sd+dz/dist*adv)*sp;
     const ang=Math.abs(angDiff(e.yaw,want));ai.burstPause-=dt;
     if(ai.seeT>=ai.react&&ang<.2&&e.fireCd<=0&&e.reloadT<=0&&e.swapT<=0&&ai.burstPause<=0&&!(e.burstLeft>0)){
-      if(w.melee){if(dist<=2.1)botMelee(e,tg);}
+      if(w.melee){if(dist<=W[e.melee||'knife'].range)botMelee(e,tg);}
       else{const a=e.ammo[wk];
       if(a.mag<=0){if(!startReload(e)&&e.slot===1)switchSlot(e,2);}
       else if(w.burst){e.burstLeft=w.burst;e.burstTarget=tg;}
@@ -788,7 +788,7 @@ function owned(k){return GEAR[k]?!!P[k]:(P.primary===k||P.secondary===k||P.melee
 function statsHTML(k){
   if(GEAR[k])return `<p>${GEAR[k].desc}</p>`;
   const w=W[k];let rows;
-  if(w.melee)rows=[['傷害',w.dmg/130,w.dmg+'（背刺 110）'],['攻擊速度',w.rpm/900,w.rpm+' 次/分'],['距離',w.range/90,w.range+' m'],['移動速度',(w.speed-.6)/.4,Math.round(w.speed*100)+'%']];
+  if(w.melee)rows=[['傷害',w.dmg/130,w.dmg+'（背刺 110）'],['攻擊速度',w.rpm/900,w.rpm+' 次/分'],['攻擊距離',w.range/3.5,w.range+' m'],['移動速度',(w.speed-.6)/.4,Math.round(w.speed*100)+'%']];
   else rows=[['傷害',w.dmg*w.pellets/130,w.pellets>1?`${w.dmg}×${w.pellets}`:w.dmg],['射速',Math.min(1,w.rpm/900),w.burst?`${w.burst} 連發`:w.rpm+' rpm'],['彈匣',w.mag/100,(P&&magCap(P,k)>w.mag?`${w.mag}（擴充 ${magCap(P,k)}）`:w.mag)+' / '+w.reserve],['裝填速度',(5.2-w.reload)/4.5,w.reload+' s'],['後座力',w.recoil/1.6,w.recoil.toFixed(2)],['射程',w.range/90,w.range+' m'],['精準度',1-(w.scope?w.scopeSpread:w.spread)/.1,Math.round((1-(w.scope?w.scopeSpread:w.spread)/.1)*100)+(w.scope?'（開鏡）':'')],['移動速度',(w.speed-.6)/.4,Math.round(w.speed*100)+'%']];
   const tags=w.tags?`<div class="tags">${w.tags.map(t=>`<span>${t}</span>`).join('')}</div>`:'';
   return tags+`<div class="stats">${rows.map(r=>`<span>${r[0]}</span><i style="--v:${Math.round(clamp(r[1],.04,1)*100)}%"></i><em>${r[2]}</em>`).join('')}</div>`;

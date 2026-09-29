@@ -7,9 +7,9 @@ const W={
   revolver:{name:'R-6 左輪手槍',      cls:'手槍',        slot:2,dmg:55, pellets:1,rpm:150, mag:6,  reserve:30, reload:2.8,recoil:.8, range:50,speed:.98, price:600, auto:false,spread:.005,botAcc:.52,look:'revolver',tags:['六發','50 m 不衰減','遠距爆頭一擊']},
   h9:      {name:'H-9 重型手槍',      cls:'手槍',        slot:2,dmg:72, pellets:1,rpm:110, mag:6,  reserve:24, reload:2.2,recoil:1.35,range:16,speed:.97,price:700, auto:false,spread:.02,  botAcc:.48,look:'h9',tags:['近距兩槍倒地','射程短']},
   dual:    {name:'D-9 雙槍',          cls:'手槍',        slot:2,dmg:24, pellets:1,rpm:520, mag:30, reserve:90, reload:3.0,recoil:.4, range:22,speed:.98, price:800, auto:false,spread:.022,botAcc:.42,look:'dual',tags:['雙持']},
-  knife:   {name:'小刀',              cls:'近戰',        slot:3,dmg:50, pellets:1,rpm:130, mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.1,speed:1.1,price:0,   auto:true, spread:0,   botAcc:.75,look:'knife',melee:true,tags:['背刺 110']},
-  katana:  {name:'武士刀',            cls:'近戰',        slot:3,dmg:65, pellets:1,rpm:100, mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.6,speed:1.05,price:1200,auto:true,spread:0,  botAcc:.75,look:'katana',melee:true,dash:{cd:5,dist:6.5,time:.22,dmg:100},tags:['右鍵 衝刺拔刀斬','冷卻 5 秒']},
-  axe:     {name:'戰斧',              cls:'近戰',        slot:3,dmg:60, pellets:1,rpm:80,  mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.3,speed:.96, price:900, auto:true,spread:0,  botAcc:.75,look:'axe',melee:true,charge:{time:1.5,max:130},tags:['按住右鍵蓄力','最高 130 傷害']},
+  knife:   {name:'小刀',              cls:'近戰',        slot:3,dmg:50, pellets:1,rpm:130, mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.1,arc:.6, speed:1.1,price:0,   auto:true, spread:0,   botAcc:.75,look:'knife',melee:true,tags:['背刺 110']},
+  katana:  {name:'武士刀',            cls:'近戰',        slot:3,dmg:65, pellets:1,rpm:100, mag:0,  reserve:0,  reload:0,  recoil:0,  range:3.3,arc:.45,speed:1.05,price:1200,auto:true,spread:0,  botAcc:.75,look:'katana',melee:true,dash:{cd:5,dist:6.5,time:.22,dmg:100},tags:['攻擊距離 3.3 m','揮砍範圍大','右鍵 衝刺拔刀斬','冷卻 5 秒']},
+  axe:     {name:'戰斧',              cls:'近戰',        slot:3,dmg:60, pellets:1,rpm:80,  mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.8,arc:.55,speed:.96, price:900, auto:true,spread:0,  botAcc:.75,look:'axe',melee:true,charge:{time:1.5,max:130},tags:['攻擊距離 2.8 m','按住右鍵蓄力','最高 130 傷害']},
   smg:     {name:'V-9 衝鋒槍',        cls:'衝鋒槍',      slot:1,dmg:22, pellets:1,rpm:850, mag:30, reserve:120,reload:2.1,recoil:.25,range:22,speed:.97, price:1500,auto:true, spread:.026,botAcc:.36,look:'smg',tags:['穩定']},
   rapid:   {name:'SM-12 速射衝鋒槍',  cls:'衝鋒槍',      slot:1,dmg:16, pellets:1,rpm:1100,mag:50, reserve:150,reload:2.4,recoil:.42,range:16,speed:.98, price:1800,auto:true, spread:.036,botAcc:.34,look:'rapid',tags:['極高射速']},
   mp7:     {name:'MP-7 高機動衝鋒槍', cls:'衝鋒槍',      slot:1,dmg:19, pellets:1,rpm:800, mag:40, reserve:160,reload:2.0,recoil:.3, range:20,speed:1.05,price:2000,auto:true, spread:.024,botAcc:.37,look:'mp7',tags:['高機動','40 發']},
@@ -27,7 +27,7 @@ const W={
   heavy:   {name:'HX-60 重機槍',      cls:'重型武器',    slot:1,dmg:34, pellets:1,rpm:750, mag:100,reserve:200,reload:4.8,recoil:.55,range:45,speed:.75, price:6000,auto:true, spread:.04, botAcc:.4, look:'heavy',tags:['百發彈匣']},
 };
 const WDESC={
-  p9:'每次重生免費配發的基本手槍',knife:'免費近戰武器，從背後攻擊一刀倒地',
+  p9:'每次重生免費配發的基本手槍',knife:'免費近戰武器，攻擊距離 2.1 m，從背後攻擊一刀倒地',
   katana:'攻擊距離長的近戰武器。右鍵向前衝刺約 6.5 公尺，途中斬到的第一個敵人受到 100 傷害，冷卻 5 秒',axe:'單擊 60 傷害。按住右鍵蓄力，放開時揮出重擊，蓄滿 1.5 秒達到上限 130 傷害；蓄力時移動變慢',
   magnum:'單發傷害高的平價半自動副武器',revolver:'六發左輪，手槍中最準，50 公尺內傷害不衰減，中遠距離也能爆頭一槍倒地；裝填慢',h9:'近距離手炮：16 公尺內兩槍倒地（對方有護甲也一樣），爆頭一槍；距離一拉開傷害就大幅下降',dual:'雙持連射，彈匣大但裝填慢',
   smg:'後座穩、好控制的近距離主力',rapid:'射速極高、火力猛，但後座偏大、射程短，適合貼身',mp7:'40 發彈匣、拿著跑得比其他槍都快的衝鋒槍。單發傷害和射程比 V-9 低，用機動性換火力',

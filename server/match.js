@@ -259,7 +259,7 @@ export class Match {
       if (t.team === e.team || !t.alive) continue;
       const p = this.posAt(t, at), dx = p.x - e.pos.x, dz = p.z - e.pos.z, d = Math.hypot(dx, dz);
       if (d > w.range + 0.3 || Math.abs(p.y - e.pos.y) > 1.2) continue;
-      if ((dx * fx + dz * fz) / Math.max(d, 0.01) < 0.55) continue;
+      if ((dx * fx + dz * fz) / Math.max(d, 0.01) < (w.arc || 0.6) - 0.05) continue;
       if (!los(this.world, eye, { x: p.x, y: p.y + CHEST_Y, z: p.z })) continue;
       if (d < bd) { bd = d; best = t; }
     }
@@ -344,7 +344,7 @@ export class Match {
       mx = (-dz / dist * sd + dx / dist * adv) * sp; mz = (dx / dist * sd + dz / dist * adv) * sp;
       const ang = Math.abs(angDiff(e.yaw, want)); ai.burstPause -= dt;
       if (ai.seeT >= ai.react && ang < 0.2 && e.fireCd <= 0 && e.reloadT <= 0 && e.swapT <= 0 && ai.burstPause <= 0 && !(e.burstLeft > 0)) {
-        if (w.melee) { if (dist <= 2.1) this.botMelee(e, tg); }
+        if (w.melee) { if (dist <= W[e.melee || 'knife'].range) this.botMelee(e, tg); }
         else {
           const a = e.ammo[wk];
           if (a.mag <= 0) { if (!this.startReload(e) && e.slot === 1) this.switchSlot(e, 2); }
