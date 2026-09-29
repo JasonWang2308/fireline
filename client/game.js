@@ -592,7 +592,7 @@ document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockEl
   if(!locked&&state==='play'&&!buyOpen&&!noLock&&!isTouch){setPause(true);}});
 function lockFailed(){if(!everLocked)noLock=true;else if(state==='play'&&!buyOpen&&!locked)setPause(true);}
 document.addEventListener('pointerlockerror',lockFailed);
-function setPause(p,mode){paused=p;$('pause').hidden=!p;
+function setPause(p,mode){paused=p;$('pause').hidden=!p;$('quitBtn').textContent=online?'離開房間並回到主選單':'結束並回到主選單';
   const start=mode==='start';$('pauseEyebrow').textContent=start?'MATCH START':'PAUSED';$('pauseTitle').textContent=start?'對戰開始':'暫停中';
   $('pauseText').textContent=start?'點「進入對戰」鎖定滑鼠就能開始移動和射擊。對戰時間已經在跑了。':'點擊繼續後會鎖定滑鼠。按 Esc 可隨時暫停。';$('resumeBtn').textContent=start?'進入對戰':'繼續';if(p){trigger=false;for(const k in keys)keys[k]=false;}}
 canvas.addEventListener('mousedown',ev=>{
@@ -911,11 +911,17 @@ function endMatch(){
   $('hud').hidden=true;const [a,b]=teamKills;const mine=teamKills[P.team],theirs=teamKills[1-P.team];const r=$('resultTxt');
   if(mine>theirs){r.textContent='勝利 VICTORY';r.className='result win';}else if(mine<theirs){r.textContent='落敗 DEFEAT';r.className='result lose';}else{r.textContent='平手 DRAW';r.className='result draw';}
   $('finA').textContent=a;$('finB').textContent=b;$('endGrid').innerHTML=boardHTML();$('endScr').hidden=false;
+  // online: the room stays open, so the natural next step is back to the lobby (auto after a short countdown)
+  clearInterval(endTimer);
+  if(online){let n=15;$('menuBtn').textContent='離開房間';const tick=()=>{$('againBtn').textContent=`回到房間（${n}）`;if(n--<=0){clearInterval(endTimer);backToRoom();}};tick();endTimer=setInterval(tick,1000);}
+  else{$('againBtn').textContent='再來一場';$('menuBtn').textContent='主選單';}
   sfxTone(mine>=theirs?[523,659,784]:[392,330,262],.35,.15,'triangle');
 }
-function toMenu(){if(!online&&ents.some(e=>e.remote))offlineRoster();state='menu';$('endScr').hidden=true;$('pause').hidden=true;$('hud').hidden=true;$('deathScr').hidden=true;$('menu').hidden=false;paused=false;if(locked)document.exitPointerLock();}
+let endTimer=0;
+function backToRoom(){clearInterval(endTimer);if(!online||state!=='end')return;$('endScr').hidden=true;openOnline();}
+function toMenu(){clearInterval(endTimer);if(!online&&ents.some(e=>e.remote))offlineRoster();state='menu';$('endScr').hidden=true;$('pause').hidden=true;$('hud').hidden=true;$('deathScr').hidden=true;$('menu').hidden=false;paused=false;if(locked)document.exitPointerLock();}
 $('startBtn').addEventListener('click',startMatch);
-$('againBtn').addEventListener('click',()=>{if(online){$('endScr').hidden=true;openOnline();}else startMatch();});
+$('againBtn').addEventListener('click',()=>{if(online)backToRoom();else startMatch();});
 $('menuBtn').addEventListener('click',()=>{if(online)leaveOnline();toMenu();});
 $('resumeBtn').addEventListener('click',()=>{setPause(false);requestLock();});
 $('quitBtn').addEventListener('click',()=>{setPause(false);if(online){leaveOnline();toMenu();}else endMatch();});
@@ -1067,6 +1073,7 @@ function onlineKill(m){
   else if(v.remote){if(v.alive)v.deadT=0;v.alive=false;v.mesh.flash.visible=false;}
 }
 function startOnlineMatch(m){
+  clearInterval(endTimer);
   const me=m.players.find(p=>p.id===online.net.id);if(!me)return;
   $('online').hidden=true;$('endScr').hidden=true;
   for(const e of ents.slice())if(e!==P)removeEnt(e);
