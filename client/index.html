@@ -41,18 +41,7 @@
   <div id="popups"></div>
   <div id="hurtDir" aria-hidden="true"></div>
   <div id="vignette" aria-hidden="true"></div>
-  <div id="scope" hidden>
-  <svg viewBox="-100 -100 200 200" aria-hidden="true">
-    <g class="halo"><circle r="90"/><path d="M-90 0H-70M70 0H90M0 -90V-70M0 70V90M-24 0H-9M9 0H24M0 -24V-9M0 9V24 M30 -2.2V2.2 M-30 -2.2V2.2 M-2.2 30H2.2 M-2.2 -30H2.2 M40 -2.2V2.2 M-40 -2.2V2.2 M-2.2 40H2.2 M-2.2 -40H2.2 M50 -2.2V2.2 M-50 -2.2V2.2 M-2.2 50H2.2 M-2.2 -50H2.2 M60 -2.2V2.2 M-60 -2.2V2.2 M-2.2 60H2.2 M-2.2 -60H2.2"/><circle r="7"/></g>
-    <g class="ret">
-      <circle class="outer" r="98"/><circle r="90"/>
-      <path class="post" d="M-100 0H-86M86 0H100M0 -100V-86M0 86V100"/>
-      <path d="M-90 0H-70M70 0H90M0 -90V-70M0 70V90"/>
-      <path class="fine" d="M-24 0H-9M9 0H24M0 -24V-9M0 9V24 M30 -2.2V2.2 M-30 -2.2V2.2 M-2.2 30H2.2 M-2.2 -30H2.2 M40 -2.2V2.2 M-40 -2.2V2.2 M-2.2 40H2.2 M-2.2 -40H2.2 M50 -2.2V2.2 M-50 -2.2V2.2 M-2.2 50H2.2 M-2.2 -50H2.2 M60 -2.2V2.2 M-60 -2.2V2.2 M-2.2 60H2.2 M-2.2 -60H2.2"/>
-      <circle class="fine" r="7"/><circle class="dot" r=".9"/>
-    </g>
-  </svg>
-  </div>
+  <div id="scope" hidden></div>
 </div>
 
 <div id="touch">
@@ -136,6 +125,15 @@
         <div class="opt"><label for="xhTh">粗細</label><input id="xhTh" type="range" min="1" max="6" step="1"><output id="xhThV"></output></div>
         <div class="opt"><label for="xhGap">中心間距</label><input id="xhGap" type="range" min="0" max="20" step="1"><output id="xhGapV"></output></div>
         <div class="opt checks"><label><input type="checkbox" id="xhDot"> 中心點</label><label><input type="checkbox" id="xhOutline"> 黑色描邊</label><label><input type="checkbox" id="xhDyn"> 移動與射擊時擴散</label></div>
+        <div class="xh-sub">狙擊鏡準心 <small>開鏡時使用</small></div>
+        <div class="sc-row">
+          <div class="sc-prev" id="scDemo" aria-label="狙擊鏡準心預覽"></div>
+          <div class="sc-opts">
+            <div class="opt"><span>樣式</span><div class="seg" id="scStyle"><button type="button" data-v="mil">精密刻度</button><button type="button" data-v="duplex">粗細十字</button><button type="button" data-v="german">德式三柱</button><button type="button" data-v="dot">簡約圓點</button></div></div>
+            <div class="opt"><span>線條顏色</span><div class="sw" id="scColors"></div></div>
+            <div class="opt checks"><label><input type="checkbox" id="scDot"> 中心點</label></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

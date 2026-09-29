@@ -960,7 +960,7 @@ seg('segTime',v=>{matchLen=+v;$('priceNote').textContent=priceLabel();});seg('se
 $('sens').addEventListener('input',ev=>{sensMul=+ev.target.value;});
 
 /* ================= CROSSHAIR SETTINGS ================= */
-const CH_DEF={style:'cross',color:'#ffffff',len:8,th:2,gap:4,dot:false,outline:true,dynamic:true};
+const CH_DEF={style:'cross',color:'#ffffff',len:8,th:2,gap:4,dot:false,outline:true,dynamic:true,scStyle:'mil',scColor:'#07090b',scDot:true};
 let CH=Object.assign({},CH_DEF);
 try{const sv=JSON.parse(localStorage.getItem('dustline-crosshair')||'null');if(sv&&typeof sv==='object')Object.assign(CH,sv);}catch(err){}
 function saveCH(){try{localStorage.setItem('dustline-crosshair',JSON.stringify(CH));}catch(err){}}
@@ -970,6 +970,21 @@ function styleCross(el,gap){
   el.style.setProperty('--col',CH.color);el.style.setProperty('--len',CH.len+'px');el.style.setProperty('--th',CH.th+'px');
   if(gap!==undefined)el.style.setProperty('--gap',gap+'px');
 }
+// scope reticle drawn as SVG in a 200x200 box centred on 0,0 (radius 100 = edge of the scope)
+const SC_COLORS=['#07090b','#e0332b','#35d16a','#f2f5f8'];
+function scopeSVG(st,col,dot){
+  const dark=col==='#07090b',halo=dark?'rgba(255,255,255,.28)':'rgba(0,0,0,.35)',HOUSING='#07090b';
+  const ticks=[30,40,50,60].map(d=>`M${d} -2.2V2.2M${-d} -2.2V2.2M-2.2 ${d}H2.2M-2.2 ${-d}H2.2`).join('');
+  const parts=[];   // [path or cRADIUS, stroke width]; the two rings are the scope housing and stay dark
+  if(st==='duplex')parts.push(['M-100 0H-28M28 0H100M0 -100V-28M0 28V100',3.4],['M-28 0H28M0 -28V28',.7]);
+  else if(st==='german')parts.push(['M-100 0H-9M9 0H100M0 100V9',4.6],['M0 -100V0',.8]);
+  else if(st==='dot')parts.push(['M-90 0H-40M40 0H90M0 -90V-40M0 40V90',.8],['c5',.8]);
+  else parts.push(['M-100 0H-86M86 0H100M0 -100V-86M0 86V100',4],['M-90 0H-70M70 0H90M0 -90V-70M0 70V90',1.1],['M-24 0H-9M9 0H24M0 -24V-9M0 9V24'+ticks,.7],['c7',.7]);
+  const el=(p,w,stroke)=>p[0]==='c'?`<circle r="${p.slice(1)}" fill="none" stroke="${stroke}" stroke-width="${w}"/>`:`<path d="${p}" fill="none" stroke="${stroke}" stroke-width="${w}"/>`;
+  const dotCol=dark?'#d8342a':col;
+  return `<svg viewBox="-100 -100 200 200" aria-hidden="true">${el('c90',2.5,'rgba(255,255,255,.28)')}${el('c98',6,HOUSING)}${el('c90',1.1,HOUSING)}${parts.filter(p=>p[1]<3).map(p=>el(p[0],p[1]+(dark?1.4:1),halo)).join('')}${parts.map(p=>el(p[0],p[1],col)).join('')}${dot?`<circle r="${st==='dot'?1.6:1}" fill="${dotCol}"/>`:''}</svg>`;
+}
+function applyScope(){const svg=scopeSVG(CH.scStyle,CH.scColor,CH.scDot);$('scope').innerHTML=svg;$('scDemo').innerHTML=svg;}
 const XH_COLORS=['#ffffff','#3dff6e','#ffe03d','#3de8ff','#ff4dd2','#ff3b30'];
 function syncXhUI(){
   $('xhStyle').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===CH.style)));
@@ -978,6 +993,9 @@ function syncXhUI(){
   [['xhLen','len'],['xhTh','th'],['xhGap','gap']].forEach(([id,k])=>{$(id).value=CH[k];$(id+'V').textContent=CH[k]+' px';});
   $('xhDot').checked=CH.dot;$('xhOutline').checked=CH.outline;$('xhDyn').checked=CH.dynamic;
   styleCross($('xhDemo'),CH.gap);styleCross($('cross'),CH.gap);
+  $('scStyle').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===CH.scStyle)));
+  $('scColors').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===CH.scColor)));
+  $('scDot').checked=CH.scDot;applyScope();
 }
 function initXhUI(){
   const changed=()=>{saveCH();syncXhUI();};
@@ -989,6 +1007,10 @@ function initXhUI(){
   $('xhDot').addEventListener('change',ev=>{CH.dot=ev.target.checked;changed();});
   $('xhOutline').addEventListener('change',ev=>{CH.outline=ev.target.checked;changed();});
   $('xhDyn').addEventListener('change',ev=>{CH.dynamic=ev.target.checked;changed();});
+  $('scColors').innerHTML=SC_COLORS.map(c=>`<button type="button" data-v="${c}" style="background:${c}" aria-label="鏡內顏色 ${c}"></button>`).join('');
+  $('scStyle').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;CH.scStyle=b.dataset.v;changed();});
+  $('scColors').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;CH.scColor=b.dataset.v;changed();});
+  $('scDot').addEventListener('change',ev=>{CH.scDot=ev.target.checked;changed();});
   $('xhReset').addEventListener('click',()=>{CH=Object.assign({},CH_DEF);changed();});
   $('xhDone').addEventListener('click',()=>{$('xhScr').hidden=true;});
   const open=()=>{syncXhUI();$('xhScr').hidden=false;};

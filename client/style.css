@@ -101,13 +101,8 @@ kbd{font-family:var(--f-num);font-weight:700;background:rgba(255,255,255,.12);bo
 #hurtDir.show{opacity:.9;transition:none}
 #vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(200,20,10,.55));opacity:0;transition:opacity .5s}
 #scope{position:absolute;inset:0;background:radial-gradient(circle at center,transparent 0 33vmin,#020406 33.4vmin)}
-#scope svg{position:absolute;left:50%;top:50%;width:66.8vmin;height:66.8vmin;transform:translate(-50%,-50%);fill:none;stroke-linecap:butt}
-#scope .ret{stroke:#07090b;stroke-width:1.1}
-#scope .ret .outer{stroke-width:6}
-#scope .ret .post{stroke-width:4}
-#scope .ret .fine{stroke-width:.7}
-#scope .ret .dot{fill:#d8342a;stroke:none}
-#scope .halo{stroke:rgba(255,255,255,.28);stroke-width:2.4}
+#scope svg{position:absolute;left:50%;top:50%;width:66.8vmin;height:66.8vmin;transform:translate(-50%,-50%)}
+
 
 /* ---------- screens ---------- */
 .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding-inline:16px;padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-bottom,0px));overflow:auto}
@@ -295,3 +290,9 @@ input[type=text]{background:rgba(255,255,255,.06);border:1px solid var(--line);c
 #skillTag.cool{color:var(--muted)}
 .cta:disabled{opacity:.5;cursor:not-allowed;transform:none}
 #menu .credit{position:absolute;right:16px;bottom:12px;font:500 12px/1 var(--f-ui);color:rgba(240,244,248,.85);text-shadow:0 1px 3px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.6);letter-spacing:.06em;pointer-events:none}
+.xh-sub{margin-top:6px;padding-top:12px;border-top:1px solid var(--line);font-weight:700;font-size:14px}
+.xh-sub small{color:var(--muted);font-weight:500;font-size:12px;margin-left:6px}
+.sc-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.sc-prev{width:150px;height:150px;flex:none;border-radius:50%;overflow:hidden;background:linear-gradient(#8fb3d4 0 45%,#c9b48a 45% 100%);box-shadow:0 0 0 4px #020406}
+.sc-prev svg{display:block;width:100%;height:100%}
+.sc-opts{display:flex;flex-direction:column;gap:12px;flex:1;min-width:220px}
