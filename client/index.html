@@ -35,6 +35,7 @@
   <div id="zoneChip" hidden>購買區 · 按 <kbd>B</kbd> 開啟購買選單</div>
   <div id="cross" class="xh" aria-hidden="true"></div>
   <div id="hit" aria-hidden="true"></div>
+  <div id="aimName" hidden></div>
   <div id="killNote" aria-live="polite"></div>
   <div id="popups"></div>
   <div id="hurtDir" aria-hidden="true"></div>
@@ -101,7 +102,7 @@
       <div id="olLobby" hidden>
         <div class="ol-code"><span>房間代碼</span><b id="olCodeShow">----</b><button class="ghost" id="olCopy" type="button">複製</button></div>
         <div class="board-grid" id="olTeams"></div>
-        <div class="ol-set"><div class="opt"><span>地圖</span><div class="seg" id="olMap"></div></div><div class="opt"><span>對戰時間</span><div class="seg" id="olLen"></div></div></div>
+        <div class="ol-set"><div class="opt" id="olAiRow"><span>AI 補位</span><button class="ghost" id="olFill" type="button">空位補滿 AI</button><button class="ghost" id="olClear" type="button">清除 AI</button><div class="seg" id="olDiff"><button type="button" data-v="easy">新手</button><button type="button" data-v="std">標準</button><button type="button" data-v="hard">老手</button></div></div><div class="opt"><span>地圖</span><div class="seg" id="olMap"></div></div><div class="opt"><span>對戰時間</span><div class="seg" id="olLen"></div></div></div>
         <div class="ol-row"><button class="ghost" id="olSwap" type="button">換隊</button><button class="cta" id="olStart" type="button">開始對戰</button><button class="ghost" id="olLeave" type="button">離開房間</button></div>
         <p class="ol-status" id="olHint" role="status"></p>
       </div>
