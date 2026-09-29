@@ -17,6 +17,48 @@ function Get-PortOwner([int]$Port) {
   return $null
 }
 
+# 這台電腦在區網裡的 IPv4 位址（只取有預設閘道、已連線的網卡，避開 VirtualBox / Docker 之類的虛擬網卡）
+function Get-LanIPs {
+  $ips = @()
+  try {
+    $ips = Get-NetIPConfiguration -ErrorAction Stop |
+      Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } |
+      ForEach-Object { $_.IPv4Address.IPAddress }
+  } catch {}
+  if (-not $ips) {
+    $ips = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+      Where-Object { $_.IPAddress -notmatch '^(127\.|169\.254\.)' -and $_.InterfaceAlias -notmatch 'vEthernet|VirtualBox|VMware|Loopback' } |
+      ForEach-Object { $_.IPAddress }
+  }
+  return @($ips | Select-Object -Unique)
+}
+
+function Write-LanUrls([int]$Port) {
+  $ips = Get-LanIPs
+  if (-not $ips) { Write-Host '找不到這台電腦的區網位址，請確認已連上 Wi-Fi 或網路線。' -ForegroundColor Yellow; return }
+  Write-Host '給同一個 Wi-Fi 朋友的網址：' -ForegroundColor Green
+  foreach ($ip in $ips) { Write-Host "    http://${ip}:$Port" -ForegroundColor Green }
+  try { Set-Clipboard -Value ("http://" + $ips[0] + ":$Port"); Write-Host '（第一個網址已複製到剪貼簿，可以直接貼給朋友）' } catch {}
+}
+
+function Show-FriendUrl {
+  Write-Host ''
+  $port = $null
+  foreach ($p in 3000, 3001) { $o = Get-PortOwner $p; if ($o -and $o.ProcessName -eq 'node') { $port = $p; break } }
+  if (-not $port) {
+    Write-Host '遊戲伺服器目前沒有在執行。' -ForegroundColor Yellow
+    Write-Host '請先在另一個視窗選 1 或 3 啟動遊戲，朋友才連得進來。下面先列出啟動後的網址：'
+    $port = 3000
+  }
+  Write-LanUrls $port
+  Write-Host ''
+  Write-Host '朋友連不進來的話：' -ForegroundColor Cyan
+  Write-Host '  - 確認對方跟你連的是同一個 Wi-Fi（訪客網路通常互相連不到）'
+  Write-Host '  - 第一次啟動時 Windows 防火牆若有跳窗，要勾「私人網路」並允許 Node.js'
+  Write-Host '  - 連線後選「線上對戰」，你建立房間，再把 4 個字的房間代碼傳給朋友'
+  Wait-Menu
+}
+
 function Start-Game {
   $port = 3000
   $owner = Get-PortOwner $port
@@ -40,6 +82,8 @@ function Start-Game {
   Write-Host ''
   Write-Host "正在啟動遊戲伺服器，瀏覽器會自動打開 http://localhost:$port" -ForegroundColor Cyan
   Write-Host '要結束遊戲時，直接關閉這個視窗即可。'
+  Write-Host ''
+  Write-LanUrls $port
   Write-Host ''
   Start-Process cmd -ArgumentList '/c', "timeout /t 2 /nobreak >nul & start http://localhost:$port" -WindowStyle Hidden
   $env:PORT = "$port"
@@ -105,12 +149,14 @@ while ($true) {
   Write-Host '  1. 更新到最新版並啟動遊戲'
   Write-Host '  2. 推送這台電腦的修改到 GitHub'
   Write-Host '  3. 只啟動遊戲（不更新）'
-  Write-Host '  4. 離開'
+  Write-Host '  4. 顯示給同一個 Wi-Fi 朋友的網址'
+  Write-Host '  5. 離開'
   Write-Host ''
-  switch (Read-Host '請輸入 1-4 後按 Enter') {
+  switch (Read-Host '請輸入 1-5 後按 Enter') {
     '1' { Update-Game }
     '2' { Push-Changes }
     '3' { Start-Game }
-    '4' { exit }
+    '4' { Show-FriendUrl }
+    '5' { exit }
   }
 }
