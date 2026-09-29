@@ -70,7 +70,7 @@ export class Match {
 
   /* ---------------- lifecycle ---------------- */
   spawn(e, slotHint) {
-    const pts = SPAWNS[e.team];
+    const pts = this.world.spawns[e.team];
     let best = pts[0], bs = -1;
     for (const p of pts) {
       let md = 1e9; for (const o of this.ents) if (o.team !== e.team && o.alive) md = Math.min(md, Math.hypot(o.pos.x - p[0], o.pos.z - p[1]));
@@ -102,7 +102,7 @@ export class Match {
     e.reloadT = 0; e.swapT = 0.35;
   }
   buy(e, key) {
-    if (!e.alive || !inBuyZone(e) || !(W[key] || GEAR[key]) || key === 'knife' || key === 'p9') return false;
+    if (!e.alive || !inBuyZone(e, this.world) || !(W[key] || GEAR[key]) || key === 'knife' || key === 'p9') return false;
     const pr = this.priceOf(key);
     if (GEAR[key]) { if (e[key] || e.money < pr) return false; e.money -= pr; e[key] = true; if (GEAR[key].mag) for (const k in e.ammo) e.ammo[k].mag = Math.max(e.ammo[k].mag, magCap(e, k)); }
     else { if (e.money < pr || e.primary === key || e.secondary === key || e.melee === key) return false; e.money -= pr; this.giveWeapon(e, key); }
@@ -405,7 +405,7 @@ export class Match {
         e.fireCd -= dt; e.swapT -= dt; e.spawnProt = Math.max(0, e.spawnProt - dt);
         this.healStep(e, dt);
         if (e.reloadT > 0) { e.reloadT -= dt; if (e.reloadT <= 0) { const a = e.ammo[e.reloadKey]; if (a) { const take = Math.min(magCap(e, e.reloadKey) - a.mag, a.reserve); a.mag += take; a.reserve -= take; } } }
-        if (!e.bot && inBuyZone(e)) for (const k in e.ammo) e.ammo[k].reserve = W[k].reserve;
+        if (!e.bot && inBuyZone(e, this.world)) for (const k in e.ammo) e.ammo[k].reserve = W[k].reserve;
         if (e.bot) this.updateBot(e, dt);
       } else {
         e.respawnT -= dt;

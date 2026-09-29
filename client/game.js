@@ -1,6 +1,6 @@
 // 火線交鋒 FIRELINE — browser client
 import {W,WDESC,GEAR,magCap,headMul,PRICE_MUL,START_MONEY,KILL_REWARD,STREAK_BONUS,MONEY_CAP,RESPAWN,SPAWN_PROT,HP_MAX,TEAM_SIZE,SHOP,DIFF,NAMES,STYLES,PREFS,
-  B,BZ,mir,mirOf,SPAWNS,SPAWN_WALLS,MAPS,MAP_ORDER,mapSolids,rects,inRect,inBuyZone} from '../shared/game-data.js';
+  B,BZ,mir,mirOf,SIZES,mapBounds,buyZoneFor,SPAWNS,SPAWN_WALLS,MAPS,MAP_ORDER,mapSolids,rects,inRect,inBuyZone} from '../shared/game-data.js';
 import {Net} from './net.js';
 import * as S from '../shared/sim.js';
 import {SEND_HZ,INTERP_MS,MAX_NAME,MATCH_LENGTHS} from '../shared/protocol.js';
@@ -126,8 +126,9 @@ function buildMap(id){
   const G=new THREE.Group();mapGroup=G;scene.add(G);
   scene.background=skyTexCache[id]||(skyTexCache[id]=skyTex(th.sky));scene.fog=new THREE.Fog(...th.fog);
   hemi.color.setHex(th.hemi[0]);hemi.groundColor.setHex(th.hemi[1]);hemi.intensity=th.hemi[2];sun.color.setHex(th.sun[0]);sun.intensity=th.sun[1];
-  const ground=texGround(id);ground.repeat.set(20.5,14.5);
-  const gm=new THREE.Mesh(new THREE.PlaneGeometry(82,58),mat(ground));gm.rotation.x=-PI/2;gm.receiveShadow=true;G.add(gm);
+  const bb=world.B,FW=bb.maxX*2,FD=bb.maxZ*2,bz=world.bz;
+  const ground=texGround(id);ground.repeat.set(FW/4,FD/4);
+  const gm=new THREE.Mesh(new THREE.PlaneGeometry(FW,FD),mat(ground));gm.rotation.x=-PI/2;gm.receiveShadow=true;G.add(gm);
   const og=new THREE.Mesh(new THREE.PlaneGeometry(420,420),new THREE.MeshLambertMaterial({color:th.outerGround}));og.rotation.x=-PI/2;og.position.y=-.02;G.add(og);
   // buy zones + team letters
   for(const t of [0,1]){
@@ -135,9 +136,9 @@ function buildMap(id){
       g.setLineDash([]);g.fillStyle=t?'rgba(255,120,95,.9)':'rgba(120,175,255,.95)';g.font='bold 30px "Chakra Petch",sans-serif';g.textAlign='center';g.fillText('BUY ZONE',s/2,s/2+10);});
     tx.wrapS=tx.wrapT=THREE.ClampToEdgeWrapping;
     const m=new THREE.Mesh(new THREE.PlaneGeometry(16.4,10.7),new THREE.MeshBasicMaterial({map:tx,transparent:true,depthWrite:false}));
-    m.rotation.x=-PI/2;m.rotation.z=t?-PI/2:PI/2;m.position.set(t?35.65:-35.65,.02,0);G.add(m);
+    m.rotation.x=-PI/2;m.rotation.z=t?-PI/2:PI/2;const cx=(bz.x+bb.maxX)/2;m.position.set(t?cx:-cx,.02,0);G.add(m);
     const lt=canvasTex(256,(g,s)=>{g.clearRect(0,0,s,s);g.fillStyle=t?'#e2553a':'#3a7fe8';g.beginPath();g.arc(s/2,s/2,s*.46,0,PI*2);g.fill();g.fillStyle='#fff';g.font='bold 170px "Chakra Petch",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t?'B':'A',s/2,s/2+8);});
-    const lp=new THREE.Mesh(new THREE.PlaneGeometry(3,3),new THREE.MeshLambertMaterial({map:lt,transparent:true}));lp.position.set(t?40.95:-40.95,3.6,0);lp.rotation.y=t?-PI/2:PI/2;G.add(lp);
+    const lp=new THREE.Mesh(new THREE.PlaneGeometry(3,3),new THREE.MeshLambertMaterial({map:lt,transparent:true}));lp.position.set(t?bb.maxX-.05:-(bb.maxX-.05),3.6,0);lp.rotation.y=t?-PI/2:PI/2;G.add(lp);
   }
   // water + bridge
   for(const w of waters){
@@ -201,7 +202,7 @@ function buildMap(id){
     const cab=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.3,1.8),flat(0x3a4550));cab.position.set(x,6.4,cz);G.add(cab);const cable=new THREE.Mesh(new THREE.BoxGeometry(.05,4,.05),flat(0x222222));cable.position.set(x,3.9,cz);G.add(cable);}}
   // skyline / surroundings
   if(th.skyline){const m=new THREE.MeshLambertMaterial({color:th.skyCol});
-    for(let i=0;i<36;i++){const a=i/36*PI*2,r=rand(78,100);let o;
+    for(let i=0;i<36;i++){const a=i/36*PI*2,r=rand(78,100)*bb.maxX/41;let o;
       if(th.skyline==='town'){const w=rand(6,14),h=rand(6,18),d=rand(6,14);o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.y=h/2;}
       else if(th.skyline==='port'){if(Math.sin(a)<-.2){o=new THREE.Group();const lg=new THREE.MeshLambertMaterial({color:0xc98a3a});for(const dx of [-3,3]){const l=new THREE.Mesh(new THREE.BoxGeometry(1,24,1),lg);l.position.set(dx,12,0);o.add(l);}const bm=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,26),lg);bm.position.set(0,24,-6);o.add(bm);}
         else{const w=rand(8,16),h=rand(4,12),d=rand(8,16);o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.y=h/2;}}
@@ -209,8 +210,8 @@ function buildMap(id){
       else{const h=rand(22,44);o=new THREE.Mesh(new THREE.ConeGeometry(rand(16,26),h,5),m);o.position.y=h/2-2;const cap=new THREE.Mesh(new THREE.ConeGeometry(o.geometry.parameters.radius*.35,h*.35,5),moundM);cap.position.y=h*.325;o.add(cap);}
       o.position.x=Math.cos(a)*r*1.1;o.position.z=Math.sin(a)*r*.8;G.add(o);}}
   if(th.ceiling){const ct=canvasTex(256,(g,s)=>{g.fillStyle='#20262d';g.fillRect(0,0,s,s);g.fillStyle='#2b323a';for(let x=0;x<s;x+=32)g.fillRect(x,0,4,s);g.fillStyle='#fff6d8';g.fillRect(s*.3,s*.44,s*.4,s*.12);});
-    ct.repeat.set(10,7);const c=new THREE.Mesh(new THREE.PlaneGeometry(82,58),new THREE.MeshBasicMaterial({map:ct}));c.rotation.x=PI/2;c.position.y=7.5;G.add(c);}
-  if(th.snow){const n=1400,pos=new Float32Array(n*3);for(let i=0;i<n;i++){pos[i*3]=rand(-45,45);pos[i*3+1]=rand(0,24);pos[i*3+2]=rand(-32,32);}
+    ct.repeat.set(FW/8,FD/8);const c=new THREE.Mesh(new THREE.PlaneGeometry(FW,FD),new THREE.MeshBasicMaterial({map:ct}));c.rotation.x=PI/2;c.position.y=7.5;G.add(c);}
+  if(th.snow){const n=1400,pos=new Float32Array(n*3);for(let i=0;i<n;i++){pos[i*3]=rand(-bb.maxX-4,bb.maxX+4);pos[i*3+1]=rand(0,24);pos[i*3+2]=rand(-bb.maxZ-3,bb.maxZ+3);}
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
     snowPts=new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:.12,transparent:true,opacity:.85,depthWrite:false}));snowPts.frustumCulled=false;scene.add(snowPts);}
 }
@@ -364,7 +365,7 @@ function makeEnt(name,team,isPlayer,style,bot){
 function giveWeapon(e,k){const w=W[k];if(w.slot===3){e.melee=k;e.slot=3;}else{e.ammo[k]={mag:magCap(e,k),reserve:w.reserve};if(w.slot===1){e.primary=k;e.slot=1;}else{e.secondary=k;e.slot=2;}}e.reloadT=0;e.swapT=.35;
   if(e.isPlayer)buildViewmodel();else setSoldierGun(e);}
 function buy(e,key){
-  if(!inBuyZone(e)||!e.alive)return false;
+  if(!inBuyZone(e,world)||!e.alive)return false;
   if(online&&e===P){online.net.send('buy',{key});return false;}
   const pr=priceOf(key);
   if(GEAR[key]){if(e[key]||e.money<pr)return false;e.money-=pr;e[key]=true;if(GEAR[key].mag)for(const k in e.ammo)e.ammo[k].mag=Math.max(e.ammo[k].mag,magCap(e,k));return true;}
@@ -390,7 +391,7 @@ function startHeal(e){
   return true;
 }
 function spawn(e){
-  const pts=SPAWNS[e.team];let best=pts[0],bs=-1;
+  const pts=world.spawns[e.team];let best=pts[0],bs=-1;
   if(online&&e.isPlayer){const q=pts[online.slot%pts.length];best=q;bs=1e9;}
   if(bs<1e9)for(const p of pts){let md=1e9;for(const o of ents)if(o.team!==e.team&&o.alive)md=Math.min(md,Math.hypot(o.pos.x-p[0],o.pos.z-p[1]));
     let occ=0;for(const o of ents)if(o!==e&&o.alive&&Math.hypot(o.pos.x-p[0],o.pos.z-p[1])<1.2)occ=1;
@@ -740,7 +741,7 @@ function updateHud(){
   setText('slot1','1 '+(e.primary?W[e.primary].name.split(' ')[0]:'主武器 —'));setText('slot2','2 '+W[e.secondary].name.split(' ')[0]);setText('slot3','3 '+W[e.melee||'knife'].name);
   $('slot1').classList.toggle('on',e.slot===1&&!!e.primary);$('slot2').classList.toggle('on',e.slot===2||(e.slot===1&&!e.primary));$('slot3').classList.toggle('on',e.slot===3);
   const rb=$('reloadBar');if(e.reloadT>0){rb.style.visibility='visible';$('reloadFill').style.transform=`scaleX(${1-e.reloadT/W[e.reloadKey].reload})`;}else rb.style.visibility='hidden';
-  const zone=e.alive&&inBuyZone(e);$('zoneChip').hidden=!zone||buyOpen;if(isTouch){$('tBuy').hidden=!zone;$('tHeal').hidden=!(e.medkit&&e.alive);$('tScope').hidden=!(w.scope||w.dash||w.charge);$('tScope').textContent=w.dash?'拔刀':w.charge?'蓄力':'開鏡';}
+  const zone=e.alive&&inBuyZone(e,world);$('zoneChip').hidden=!zone||buyOpen;if(isTouch){$('tBuy').hidden=!zone;$('tHeal').hidden=!(e.medkit&&e.alive);$('tScope').hidden=!(w.scope||w.dash||w.charge);$('tScope').textContent=w.dash?'拔刀':w.charge?'蓄力':'開鏡';}
   if(buyOpen&&!zone)toggleBuy(false,true);
   const moving=Math.hypot(e.vel.x,e.vel.z)/5.6;
   let sp=w.scope?(scoped?w.scopeSpread:w.spread):w.spread;sp+=e.bloom+moving*(w.scope&&!scoped?.05:.02)+(e.onGround?0:.05);
@@ -752,20 +753,25 @@ function updateHud(){
 // minimap
 const mini=$('mini'),mctx=mini.getContext('2d');let miniBase=null,miniT=0;
 const KIND_COL={bldg:'#5f6d78',spawn:'#7b8791',low:'#a88f3a',log:'#7a5a36',rail:'#7a5a36',crate:'#8a6f45',tall:'#6b7550',rack:'#6a5a44',machine:'#56705e',container:'#9a4a3c',hut:'#8a6a44',tower:'#a07a4a',rock:'#8a8a82',mound:'#c9d3dc',tree:'#3f7a34',radio:'#b0bac4',sea:'#2f6f8a',bollard:'#3a4046',pillar:'#e0a92a',stair:'#9aa39a',deck:'#7c8e9e',parapet:'#6a747d'};
+// draws a map top-down into g at s pixels per metre, origin at the map's north-west corner
 function drawMapTo(g,sol,def,s,withAreas){
-  g.fillStyle='#1b2833';g.fillRect(0,0,82*s,58*s);
+  const B=mapBounds(def),BZ=buyZoneFor(def),FW=B.maxX*2,FD=B.maxZ*2;
+  g.fillStyle='#1b2833';g.fillRect(0,0,FW*s,FD*s);
   for(const w of rects(def.water)){g.fillStyle='#2f6f8a';g.fillRect((w.minX-B.minX)*s,(w.minZ-B.minZ)*s,(w.maxX-w.minX)*s,(w.maxZ-w.minZ)*s);}
   for(const b of rects(def.bridge)){g.fillStyle='#8a6a44';g.fillRect((b.minX-B.minX)*s,(b.minZ-B.minZ)*s,(b.maxX-b.minX)*s,(b.maxZ-b.minZ)*s);}
-  g.fillStyle='rgba(61,139,255,.3)';g.fillRect(0,(29-BZ.z)*s,(41-BZ.x)*s,BZ.z*2*s);g.fillStyle='rgba(255,90,58,.3)';g.fillRect((41+BZ.x)*s,(29-BZ.z)*s,(41-BZ.x)*s,BZ.z*2*s);
+  g.fillStyle='rgba(61,139,255,.3)';g.fillRect(0,(B.maxZ-BZ.z)*s,(B.maxX-BZ.x)*s,BZ.z*2*s);g.fillStyle='rgba(255,90,58,.3)';g.fillRect((B.maxX+BZ.x)*s,(B.maxZ-BZ.z)*s,(B.maxX-BZ.x)*s,BZ.z*2*s);
   for(const b of sol){if(b.kind==='outer')continue;g.fillStyle=KIND_COL[b.kind]||'#777';
     if(b.kind==='tree'){g.beginPath();g.arc((b.cx-B.minX)*s,(b.cz-B.minZ)*s,1.6*s,0,PI*2);g.fill();continue;}
     g.fillRect((b.minX-B.minX)*s,(b.minZ-B.minZ)*s,(b.maxX-b.minX)*s,(b.maxZ-b.minZ)*s);}
   if(withAreas)for(const a of def.areas){const x=(a.x-B.minX)*s,y=(a.z-B.minZ)*s;g.fillStyle='rgba(10,16,22,.85)';g.beginPath();g.arc(x,y,6,0,PI*2);g.fill();g.strokeStyle=def.accent;g.lineWidth=1.5;g.stroke();
     g.fillStyle='#fff';g.font='bold 9px "Chakra Petch",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(String(a.n),x,y+.5);}
 }
-function drawMiniBase(){miniBase=document.createElement('canvas');miniBase.width=205;miniBase.height=145;drawMapTo(miniBase.getContext('2d'),solids,MAP,2.5,true);}
+let miniS=2.5,miniOX=0,miniOY=0;
+// the minimap canvas stays 205 x 145; each map is fitted and centred in it
+function drawMiniBase(){const bb=world.B;miniS=Math.min(205/(bb.maxX*2),145/(bb.maxZ*2));miniOX=(205-bb.maxX*2*miniS)/2;miniOY=(145-bb.maxZ*2*miniS)/2;
+  miniBase=document.createElement('canvas');miniBase.width=205;miniBase.height=145;const g=miniBase.getContext('2d');g.fillStyle='#0f171e';g.fillRect(0,0,205,145);g.translate(miniOX,miniOY);drawMapTo(g,solids,MAP,miniS,true);}
 function drawMini(){
-  const s=2.5;mctx.drawImage(miniBase,0,0);
+  const s=miniS,B={minX:world.B.minX-miniOX/s,minZ:world.B.minZ-miniOY/s};mctx.drawImage(miniBase,0,0);
   for(const o of ents){if(!o.alive||o.isPlayer)continue;
     if(o.team!==P.team&&gameTime-o.spottedT>1.5&&gameTime-o.lastShotT>1.2)continue;
     mctx.fillStyle=o.team?'#ff5a3a':'#6aa6ff';mctx.beginPath();mctx.arc((o.pos.x-B.minX)*s,(o.pos.z-B.minZ)*s,3.2,0,PI*2);mctx.fill();}
@@ -835,7 +841,7 @@ function renderBuy(){
       b.addEventListener('click',()=>{buySel=k;renderBuy();});b.addEventListener('dblclick',()=>{doBuy(k);});list.appendChild(b);});});
   const k=buySel,it=itemInfo(k),d=$('buyDetail');
   const stats=statsHTML(k);
-  const can=!owned(k)&&P.money>=it.price&&inBuyZone(P);
+  const can=!owned(k)&&P.money>=it.price&&inBuyZone(P,world);
   const label=owned(k)?'已持有':P.money<it.price?`金幣不足（差 ${fmtMoney(it.price-P.money)}）`:`購買 ${fmtMoney(it.price)}`;
   d.innerHTML=`${silSVG(it.look)}<h3>${esc(it.name)}<small>${it.cls}${!GEAR[k]?' · '+WDESC[k]:''}</small></h3>${stats}<button class="buybtn" id="buyBtn" type="button" ${can?'':'disabled'}>${label}</button>`;
   $('buyBtn').addEventListener('click',()=>doBuy(k));
@@ -846,7 +852,7 @@ function priceLabel(){const m=PRICE_MUL[matchLen]||1;return m===1?'商店原價'
 function doBuy(k){if(buy(P,k)){sfxTone([660,990],.1,.12,'triangle');renderBuy();}}
 function toggleBuy(force,noRelock){
   const want=force===undefined?!buyOpen:force;
-  if(want&&(!P.alive||!inBuyZone(P)))return;
+  if(want&&(!P.alive||!inBuyZone(P,world)))return;
   buyOpen=want;$('buy').hidden=!want;trigger=false;
   if(want){renderBuy();if(locked)document.exitPointerLock();}
   else if(!noRelock){requestLock();}
@@ -891,7 +897,7 @@ function updatePlayer(dt){
   if(!trigger)shotLatch=false;
   if(e.ammo[k]&&e.ammo[k].mag===0&&e.reloadT<=0&&e.ammo[k].reserve>0&&!trigger)startReload(e);
   // buy zone: refill reserve
-  if(inBuyZone(e))for(const kk2 in e.ammo){e.ammo[kk2].reserve=W[kk2].reserve;}
+  if(inBuyZone(e,world))for(const kk2 in e.ammo){e.ammo[kk2].reserve=W[kk2].reserve;}
   // spotted check
   camera.position.set(e.pos.x,e.pos.y+1.6,e.pos.z);camera.rotation.set(e.pitch,e.yaw,0);
   const tf=scoped?w.scope:75;if(Math.abs(camera.fov-tf)>.1){camera.fov+=(tf-camera.fov)*Math.min(1,dt*18);camera.updateProjectionMatrix();}
@@ -932,7 +938,7 @@ function update(dt){
   if(boardOpen)$('boardGrid').innerHTML=boardHTML();
 }
 let orbit=0;
-function menuCam(dt){orbit+=dt*.05;camera.position.set(Math.cos(orbit)*38,mapId==='indoor'?6.5:21,Math.sin(orbit)*27);updateSnow(dt);camera.lookAt(0,0,0);if(camera.fov!==60){camera.fov=60;camera.updateProjectionMatrix();}
+function menuCam(dt){orbit+=dt*.05;const k=world?world.B.maxX/41:1;camera.position.set(Math.cos(orbit)*38*k,mapId==='indoor'?6.5:21*k,Math.sin(orbit)*27*k);updateSnow(dt);camera.lookAt(0,0,0);if(camera.fov!==60){camera.fov=60;camera.updateProjectionMatrix();}
   for(const e of ents)if(!e.isPlayer)syncBotMesh(e,0);}
 function render(){
   renderer.clear();renderer.render(scene,camera);
@@ -949,6 +955,7 @@ function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);c
 /* ================= MATCH FLOW ================= */
 function startMatch(){
   let rolled=null;if(!online&&mapChoice==='random'){rolled=randomMap();loadMap(rolled,true);}
+  if(!online)matchLen=MAPS[mapId].len;
   initAudio();if(AC&&AC.state==='suspended')AC.resume();
   state='play';paused=false;gameTime=0;timeLeft=matchLen;teamKills=[0,0];lastHud={};
   $('menu').hidden=true;$('endScr').hidden=true;$('hud').hidden=false;$('deathScr').hidden=true;$('feed').innerHTML='';$('killNote').innerHTML='';
@@ -979,7 +986,9 @@ $('menuBtn').addEventListener('click',()=>{if(online)leaveOnline();toMenu();});
 $('resumeBtn').addEventListener('click',()=>{setPause(false);requestLock();});
 $('quitBtn').addEventListener('click',()=>{setPause(false);if(online){leaveOnline();toMenu();}else endMatch();});
 function seg(id,cb){const s=$(id);s.addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;s.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));cb(b.dataset.v);});}
-seg('segTime',v=>{matchLen=+v;$('priceNote').textContent=priceLabel();});seg('segDiff',v=>{difficulty=v;});
+// the map decides the match length; null = random map, decided when the match starts
+function setLen(v){if(v)matchLen=v;$('lenNote').textContent=v?`${v/60} 分鐘`:'依抽到的地圖';$('priceNote').textContent=v?priceLabel():'';}
+seg('segDiff',v=>{difficulty=v;});
 $('sens').addEventListener('input',ev=>{sensMul=+ev.target.value;});
 
 /* ================= CROSSHAIR SETTINGS ================= */
@@ -1051,17 +1060,19 @@ function loadMap(id,force){
 function initMapPick(){
   const box=$('mapPick');box.innerHTML='';
   MAP_ORDER.forEach(id=>{const d=MAPS[id];const b=document.createElement('button');b.type='button';b.className='mapc';b.setAttribute('aria-pressed',String(id===mapId));b.style.setProperty('--acc',d.accent);
-    const cv=document.createElement('canvas');cv.width=164;cv.height=116;drawMapTo(cv.getContext('2d'),mapSolids(d),d,2,false);
+    const cv=document.createElement('canvas');cv.width=164;cv.height=116;{const bb=mapBounds(d),k=Math.min(164/(bb.maxX*2),116/(bb.maxZ*2)),g=cv.getContext('2d');g.fillStyle='#0f171e';g.fillRect(0,0,164,116);g.translate((164-bb.maxX*2*k)/2,(116-bb.maxZ*2*k)/2);drawMapTo(g,mapSolids(d),d,k,false);}
     b.appendChild(cv);const t=document.createElement('span');t.className='mt';t.innerHTML=`<b>${d.name}</b><small>${d.en}</small>`;b.appendChild(t);
+    const z=SIZES[d.size];const tg=document.createElement('span');tg.className='msz';tg.textContent=`${z.name} · ${d.len/60} 分鐘`;b.appendChild(tg);
     const p=document.createElement('span');p.className='md';p.textContent=d.desc;b.appendChild(p);
-    b.addEventListener('click',()=>{mapChoice=id;loadMap(id);box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
+    b.addEventListener('click',()=>{mapChoice=id;loadMap(id);setLen(MAPS[id].len);box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
     box.appendChild(b);});
   // random: resolved when the match starts
   const b=document.createElement('button');b.type='button';b.className='mapc';b.setAttribute('aria-pressed','false');b.style.setProperty('--acc','#f7b928');
   const cv=document.createElement('canvas');cv.width=164;cv.height=116;drawRandomCard(cv.getContext('2d'));b.appendChild(cv);
   const t=document.createElement('span');t.className='mt';t.innerHTML='<b>隨機</b><small>RANDOM</small>';b.appendChild(t);
-  const p=document.createElement('span');p.className='md';p.textContent=`每局開始時從 ${MAP_ORDER.length} 張地圖中隨機抽一張。`;b.appendChild(p);
-  b.addEventListener('click',()=>{mapChoice='random';box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
+  const tg=document.createElement('span');tg.className='msz';tg.textContent='時間依抽到的地圖';b.appendChild(tg);
+  const p=document.createElement('span');p.className='md';p.textContent=`每局開始時從 ${MAP_ORDER.length} 張地圖中隨機抽一張，對戰時間跟著地圖。`;b.appendChild(p);
+  b.addEventListener('click',()=>{mapChoice='random';setLen(null);box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
   box.appendChild(b);
   document.documentElement.style.setProperty('--map',MAPS[mapId].accent);
 }
@@ -1129,7 +1140,7 @@ function renderLobby(){
   $('olDiff').querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.v===r.settings.diff));b.disabled=!isHost;});
   $('olAiRow').hidden=!isHost;
   $('olMap').querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.v===r.settings.map));b.disabled=!isHost;});
-  $('olLen').querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String(+b.dataset.v===r.settings.len));b.disabled=!isHost;});
+  $('olLen').textContent=r.settings.len?`${r.settings.len/60} 分鐘`:'依抽到的地圖';
   $('olStart').hidden=!isHost;
   $('olHint').textContent=isHost?(r.players.length<2?'把房間代碼傳給朋友，或用「＋ AI」補上電腦玩家。一個人也可以先開始測試。':'所有人到齊後按「開始對戰」。有真人加入時，AI 會自動讓出位置。'):'等待房主開始對戰…';
   if(MAPS[r.settings.map]&&r.settings.map!==mapId&&state!=='play')loadMap(r.settings.map);
@@ -1185,7 +1196,6 @@ function remoteShot(m){
 const DIFF_NAME={easy:'新手',std:'標準',hard:'老手'};
 function initOnlineUI(){
   $('olMap').innerHTML=MAP_ORDER.map(id=>`<button type="button" data-v="${id}">${MAPS[id].name}</button>`).join('')+'<button type="button" data-v="random">隨機</button>';
-  $('olLen').innerHTML=MATCH_LENGTHS.map(v=>`<button type="button" data-v="${v}">${v/60} 分鐘</button>`).join('');
   try{const n=localStorage.getItem('fireline-name');if(n)$('olName').value=n;}catch(err){}
   $('olName').addEventListener('change',()=>{try{localStorage.setItem('fireline-name',myName());}catch(err){}});
   if(/\.github\.io$/i.test(location.hostname)){const b=$('onlineBtn');b.disabled=true;b.textContent='線上對戰（此網址僅限單機）';b.title='線上對戰要連到開伺服器的那台電腦';}
@@ -1201,7 +1211,6 @@ function initOnlineUI(){
   $('olCopy').addEventListener('click',()=>{const c=$('olCodeShow').textContent;const done=()=>{$('olCopy').textContent='已複製';setTimeout(()=>$('olCopy').textContent='複製',1200);};
     try{navigator.clipboard.writeText(c).then(done,()=>{});}catch(err){}});
   $('olMap').addEventListener('click',ev=>{const b=ev.target.closest('button');if(b&&online)online.net.send('settings',{map:b.dataset.v});});
-  $('olLen').addEventListener('click',ev=>{const b=ev.target.closest('button');if(b&&online)online.net.send('settings',{len:+b.dataset.v});});
   $('olDiff').addEventListener('click',ev=>{const b=ev.target.closest('button');if(b&&online)online.net.send('settings',{diff:b.dataset.v});});
   $('olTeams').addEventListener('click',ev=>{const b=ev.target.closest('button[data-team]');if(b&&online)online.net.send('bots',{team:+b.dataset.team,delta:+b.dataset.d});});
   $('olFill').addEventListener('click',()=>{if(online)online.net.send('bots',{fill:true});});
@@ -1220,7 +1229,7 @@ function start(){
   scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(75,1,.05,320);camera.rotation.order='YXZ';
   vmScene=new THREE.Scene();vmCam=new THREE.PerspectiveCamera(60,1,.01,10);
   vmScene.add(new THREE.HemisphereLight(0xeef4ff,0x6b5d45,.9));const vl=new THREE.DirectionalLight(0xfff0d8,.7);vl.position.set(1,2,1);vmScene.add(vl);
-  initXhUI();gunMats();makeFlashMat();setupScene();initFx();buildMap(mapId);buildNav();drawMiniBase();initMapPick();
+  initXhUI();gunMats();makeFlashMat();setupScene();initFx();buildMap(mapId);buildNav();drawMiniBase();initMapPick();setLen(MAPS[mapId].len);
   offlineRoster();
   initOnlineUI();
   resize();addEventListener('resize',resize);

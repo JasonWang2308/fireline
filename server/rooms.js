@@ -74,7 +74,7 @@ export class Rooms {
       case 'create': {
         this.leave(c);
         c.name = cleanName(m.name);
-        const r = { code: this.newCode(), host: c.id, players: new Map(), settings: { map: 'desert', len: 600, diff: 'std' }, bots: [0, 0], phase: 'lobby', endAt: 0, match: null };
+        const r = { code: this.newCode(), host: c.id, players: new Map(), settings: { map: 'desert', len: 180, diff: 'std' }, bots: [0, 0], phase: 'lobby', endAt: 0, match: null };
         this.rooms.set(r.code, r);
         log(`[${r.code}] ${c.name} 建立房間`);
         this.join(c, r);
@@ -103,8 +103,8 @@ export class Rooms {
       }
       case 'settings': {
         if (!lobby || !isHost) return;
-        if (typeof m.map === 'string' && (MAPS[m.map] || m.map === 'random')) room.settings.map = m.map;
-        if (MATCH_LENGTHS.includes(m.len)) room.settings.len = m.len;
+        // the map decides the match length (small 3 min, standard 5 min, large 10 min); 'random' rolls it at start
+        if (typeof m.map === 'string' && (MAPS[m.map] || m.map === 'random')) { room.settings.map = m.map; room.settings.len = MAPS[m.map] ? MAPS[m.map].len : 0; }
         if (typeof m.diff === 'string' && DIFF[m.diff]) room.settings.diff = m.diff;
         this.sendRoom(room);
         break;
@@ -130,7 +130,8 @@ export class Rooms {
         const [x, y, z, yaw, pitch] = m.s.slice(0, 5).map(num);
         if ([x, y, z, yaw, pitch].includes(null)) return;
         const wk = W[m.s[5]] ? m.s[5] : 'p9';
-        match.humanState(c.id, [clamp(x, B.minX, B.maxX), clamp(y, 0, 3), clamp(z, B.minZ, B.maxZ), yaw, clamp(pitch, -1.6, 1.6), wk], now);
+        const bb = match.world.B;
+        match.humanState(c.id, [clamp(x, bb.minX, bb.maxX), clamp(y, 0, 3), clamp(z, bb.minZ, bb.maxZ), yaw, clamp(pitch, -1.6, 1.6), wk], now);
         break;
       }
       case 'fire': {
@@ -195,11 +196,12 @@ export class Rooms {
     // 'random' is kept in the lobby settings and rolled again every match
     const random = room.settings.map === 'random';
     const mapId = random ? MAP_ORDER[(Math.random() * MAP_ORDER.length) | 0] : room.settings.map;
-    room.match = new Match({ mapId, len: room.settings.len, diff: room.settings.diff, humans, bots: [this.botsFor(room, 0), this.botsFor(room, 1)] }, emit);
+    const len = MAPS[mapId].len;
+    room.match = new Match({ mapId, len, diff: room.settings.diff, humans, bots: [this.botsFor(room, 0), this.botsFor(room, 1)] }, emit);
     log(`[${room.code}] 開始對戰：${mapId}，${room.players.size} 位玩家 + ${this.botsFor(room, 0) + this.botsFor(room, 1)} 個 AI`);
     room.phase = 'play';
-    room.endAt = now + room.settings.len * 1000;
-    this.broadcast(room, { t: 'start', settings: { ...room.settings, map: mapId }, random, endAt: room.endAt, now, players: room.match.roster() });
+    room.endAt = now + len * 1000;
+    this.broadcast(room, { t: 'start', settings: { ...room.settings, map: mapId, len }, random, endAt: room.endAt, now, players: room.match.roster() });
     room.match.begin();
     this.sendRoom(room);
   }

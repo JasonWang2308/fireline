@@ -1,6 +1,6 @@
 // Pure world simulation shared by the browser client and the Node server:
 // map collision, navigation grid + A*, ray casting and movement physics. No DOM, no THREE.
-import { B, MAPS, mapSolids, rects, inRect } from './game-data.js';
+import { MAPS, mapSolids, rects, inRect, mapBounds, spawnsFor, buyZoneFor } from './game-data.js';
 
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const PI = Math.PI;
@@ -12,21 +12,21 @@ export function turnTo(a, b, max) { const d = angDiff(a, b); return a + clamp(d,
 export const WALKABLE = { stair: 1, deck: 1 };
 export const STEP = 0.5;
 export function createWorld(mapId) {
-  const def = MAPS[mapId];
-  const w = { id: mapId, def, solids: mapSolids(def), waters: rects(def.water), bridges: rects(def.bridge), blocked: new Uint8Array(N), watC: new Uint8Array(N), hgt: new Float32Array(N) };
+  const def = MAPS[mapId], B = mapBounds(def), nx = B.maxX - B.minX, nz = B.maxZ - B.minZ, n = nx * nz;
+  const w = { id: mapId, def, B, nx, nz, len: def.len, spawns: spawnsFor(def), bz: buyZoneFor(def),
+    solids: mapSolids(def), waters: rects(def.water), bridges: rects(def.bridge), blocked: new Uint8Array(n), watC: new Uint8Array(n), hgt: new Float32Array(n) };
   buildNav(w);
   return w;
 }
 export function inWater(w, x, z) { return w.waters.length > 0 && inRect(w.waters, x, z) && !inRect(w.bridges, x, z); }
 
 /* ---------------- navigation ---------------- */
-export const NX = B.maxX - B.minX, NZ = B.maxZ - B.minZ, N = NX * NZ;
-const idx = (ix, iz) => iz * NX + ix;
-export function cellX(x) { return clamp(Math.floor(x - B.minX), 0, NX - 1); }
-export function cellZ(z) { return clamp(Math.floor(z - B.minZ), 0, NZ - 1); }
+// one nav cell per square metre; every map has its own grid size (w.nx x w.nz)
+export function cellX(w, x) { return clamp(Math.floor(x - w.B.minX), 0, w.nx - 1); }
+export function cellZ(w, z) { return clamp(Math.floor(z - w.B.minZ), 0, w.nz - 1); }
 function buildNav(w) {
-  const pad = 0.45;
-  for (let iz = 0; iz < NZ; iz++) for (let ix = 0; ix < NX; ix++) {
+  const pad = 0.45, NX = w.nx, B = w.B, idx = (ix, iz) => iz * NX + ix;
+  for (let iz = 0; iz < w.nz; iz++) for (let ix = 0; ix < NX; ix++) {
     const x = B.minX + ix + 0.5, z = B.minZ + iz + 0.5;
     let bl = 0, h = 0;
     for (const s of w.solids) {
@@ -37,8 +37,10 @@ function buildNav(w) {
     w.watC[idx(ix, iz)] = inWater(w, x, z) ? 1 : 0;
   }
 }
-export function blockedAt(w, x, z) { return w.blocked[idx(cellX(x), cellZ(z))]; }
+export function blockedAt(w, x, z) { return w.blocked[cellZ(w, z) * w.nx + cellX(w, x)]; }
+function hgtAt(w, x, z) { return w.hgt[cellZ(w, z) * w.nx + cellX(w, x)]; }
 export function nearestOpen(w, ix, iz) {
+  const NX = w.nx, NZ = w.nz, idx = (a, b) => b * NX + a;
   if (!w.blocked[idx(ix, iz)]) return idx(ix, iz);
   for (let r = 1; r < 10; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
     if (Math.abs(dx) !== r && Math.abs(dz) !== r) continue;
@@ -49,7 +51,8 @@ export function nearestOpen(w, ix, iz) {
   return -1;
 }
 // A* scratch buffers (single-threaded, reused between calls)
-const gS = new Float32Array(N), came = new Int32Array(N), stamp = new Uint32Array(N), closed = new Uint32Array(N);
+const MAXN = 128 * 96;   // largest map grid
+const gS = new Float32Array(MAXN), came = new Int32Array(MAXN), stamp = new Uint32Array(MAXN), closed = new Uint32Array(MAXN);
 let gen = 0;
 const hN = [], hF = [];
 function hPush(n, f) { hN.push(n); hF.push(f); let i = hN.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (hF[p] <= hF[i]) break; [hN[p], hN[i]] = [hN[i], hN[p]]; [hF[p], hF[i]] = [hF[i], hF[p]]; i = p; } }
@@ -58,10 +61,10 @@ function hPop() {
   if (hN.length) { hN[0] = ln; hF[0] = lf; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < hN.length && hF[l] < hF[m]) m = l; if (r < hN.length && hF[r] < hF[m]) m = r; if (m === i) break; [hN[m], hN[i]] = [hN[i], hN[m]]; [hF[m], hF[i]] = [hF[i], hF[m]]; i = m; } }
   return top;
 }
-function heur(a, b) { const dx = Math.abs(a % NX - b % NX), dz = Math.abs(((a / NX) | 0) - ((b / NX) | 0)); return dx + dz + (1.414 - 2) * Math.min(dx, dz); }
+function heur(NX, a, b) { const dx = Math.abs(a % NX - b % NX), dz = Math.abs(((a / NX) | 0) - ((b / NX) | 0)); return dx + dz + (1.414 - 2) * Math.min(dx, dz); }
 export function astar(w, s, g) {
-  const blocked = w.blocked, watC = w.watC, hgt = w.hgt;
-  gen++; hN.length = 0; hF.length = 0; gS[s] = 0; stamp[s] = gen; came[s] = -1; hPush(s, heur(s, g));
+  const blocked = w.blocked, watC = w.watC, hgt = w.hgt, NX = w.nx, NZ = w.nz, idx = (a, b) => b * NX + a;
+  gen++; hN.length = 0; hF.length = 0; gS[s] = 0; stamp[s] = gen; came[s] = -1; hPush(s, heur(NX, s, g));
   let it = 0;
   while (hN.length && it++ < 14000) {
     const c = hPop(); if (c === g) break; if (closed[c] === gen) continue; closed[c] = gen;
@@ -73,7 +76,7 @@ export function astar(w, s, g) {
       if (hgt[ni] - hgt[c] > STEP + 0.01) continue;   // can step up a stair, never climb a deck's side (dropping down is fine)
       if (dx && dz && (blocked[idx(cx + dx, cz)] || blocked[idx(cx, cz + dz)] || hgt[idx(cx + dx, cz)] !== hgt[c] || hgt[idx(cx, cz + dz)] !== hgt[c])) continue;
       const ng = gS[c] + (dx && dz ? 1.414 : 1) + (watC[ni] ? 1.6 : 0);
-      if (stamp[ni] !== gen || ng < gS[ni]) { stamp[ni] = gen; gS[ni] = ng; came[ni] = c; hPush(ni, ng + heur(ni, g)); }
+      if (stamp[ni] !== gen || ng < gS[ni]) { stamp[ni] = gen; gS[ni] = ng; came[ni] = c; hPush(ni, ng + heur(NX, ni, g)); }
     }
   }
   if (stamp[g] !== gen) return null;
@@ -82,16 +85,16 @@ export function astar(w, s, g) {
 }
 export function lineWalkable(w, ax, az, bx, bz) {
   const d = Math.hypot(bx - ax, bz - az), n = Math.ceil(d / 0.3);
-  let ph = w.hgt[idx(cellX(ax), cellZ(az))];
+  let ph = hgtAt(w, ax, az);
   for (let i = 1; i <= n; i++) {
     const t = i / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
     if (blockedAt(w, x, z)) return false;
-    const h = w.hgt[idx(cellX(x), cellZ(z))]; if (h !== ph) return false;   // keep height changes on the grid path (stairs)
+    const h = hgtAt(w, x, z); if (h !== ph) return false;   // keep height changes on the grid path (stairs)
   }
   return true;
 }
 export function findPath(w, from, to) {
-  const s = nearestOpen(w, cellX(from.x), cellZ(from.z)), g = nearestOpen(w, cellX(to.x), cellZ(to.z));
+  const s = nearestOpen(w, cellX(w, from.x), cellZ(w, from.z)), g = nearestOpen(w, cellX(w, to.x), cellZ(w, to.z)), B = w.B, NX = w.nx;
   if (s < 0 || g < 0) return null;
   const cells = astar(w, s, g); if (!cells) return null;
   const pts = cells.map((c) => ({ x: B.minX + (c % NX) + 0.5, z: B.minZ + ((c / NX) | 0) + 0.5 }));
@@ -162,8 +165,8 @@ export function resolveWalls(w, e) {
       if (m === pl) e.pos.x = b.minX - R_ENT; else if (m === pr) e.pos.x = b.maxX + R_ENT; else if (m === pb) e.pos.z = b.minZ - R_ENT; else e.pos.z = b.maxZ + R_ENT;
     }
   }
-  e.pos.x = clamp(e.pos.x, B.minX + R_ENT, B.maxX - R_ENT);
-  e.pos.z = clamp(e.pos.z, B.minZ + R_ENT, B.maxZ - R_ENT);
+  e.pos.x = clamp(e.pos.x, w.B.minX + R_ENT, w.B.maxX - R_ENT);
+  e.pos.z = clamp(e.pos.z, w.B.minZ + R_ENT, w.B.maxZ - R_ENT);
 }
 export function groundAt(w, x, z, y) {
   let g = 0; const r = 0.25;

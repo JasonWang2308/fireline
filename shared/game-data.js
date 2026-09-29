@@ -86,14 +86,15 @@ const PREFS={
 const B={minX:-41,maxX:41,minZ:-29,maxZ:29};
 const BZ={x:30.3,z:8.2};
 const mir=p=>[-p[0],-p[1]];
-export function inBuyZone(e){return e.team===0?(e.pos.x<-BZ.x&&Math.abs(e.pos.z)<BZ.z):(e.pos.x>BZ.x&&Math.abs(e.pos.z)<BZ.z);}
+// w is the world (sim.createWorld) so every map can have its own size
+export function inBuyZone(e,w){const bz=w.bz;return e.team===0?(e.pos.x<-bz.x&&Math.abs(e.pos.z)<bz.z):(e.pos.x>bz.x&&Math.abs(e.pos.z)<bz.z);}
 const SPAWNS=[[[-37.5,-5.4],[-37.5,-1.8],[-37.5,1.8],[-37.5,5.4],[-39.8,-3.6],[-39.8,3.6]],null];
 SPAWNS[1]=SPAWNS[0].map(mir);
 const SPAWN_WALLS=[[-37.2,-8.4,7.4,.6,3.4,'spawn'],[-37.2,8.4,7.4,.6,3.4,'spawn'],[-30,-5.65,.6,5.5,3.4,'spawn'],[-30,5.65,.6,5.5,3.4,'spawn'],[-34,0,.6,7.2,3.4,'spawn']];
 const S12=1.2,sc12=o=>{const keep=o[5]==='crate'||o[5]==='tall';return [o[0]*S12,o[1]*S12,keep||o[2]<1?o[2]:o[2]*S12,keep||o[3]<1?o[3]:o[3]*S12,o[4],o[5]];};
 // Each map: west half [cx,cz,w,d,h,kind]; the east half is its point reflection so neither side has an edge.
 const MAPS={
-  desert:{name:'沙漠遺跡',en:'DESERT',accent:'#e9a93b',desc:'開闊的中型地圖，適合中遠距離交戰，並有多條進攻路線。',
+  desert:{name:'沙漠遺跡',en:'DESERT',accent:'#e9a93b',desc:'緊湊的小型地圖，建築之間多條短路線，一出門就會接敵。',
     west:[[-31,-18,6,12,6,'bldg'],[-17,-21,10,6,5,'bldg'],[-16,-9.5,12,5,4.2,'bldg'],[-5.5,-21.5,5,5,5,'bldg'],
       [-31,18,6,12,6,'bldg'],[-18.5,19.5,7,9,5,'bldg'],[-17,9.5,8,5,4.2,'bldg'],[-8,16,6,8,5,'bldg'],
       [-19,-15,1.4,1.4,1.1,'crate'],[-13,-16.3,1.4,1.4,1.1,'crate'],[-6,-13,2.2,1.4,1.1,'crate'],[-2.6,-10.5,1.6,1.6,2.3,'tall'],
@@ -169,16 +170,41 @@ MAPS.port={name:'貨櫃港口',en:'PORT',accent:'#ff8a3d',sym:'x',desc:'北側�
   // bots pick one route per life (west-half waypoints, walked in order) and then head for the centre
   lanes:[[[-30,-21],[-18,-22],[-6,-22]],[[-23,-17],[-15,-17]],[[-26,-13],[-14,-13],[-4,-12.5]],[[-24,-1],[-12,-1]],[[-27,17.6],[-20,15.6],[-13,17]],[[-26,27.3],[-14,27.3],[-4,28]]],
   areas:[{n:1,name:'中央貨櫃場',sub:'主戰區',x:0,z:0},{n:2,name:'碼頭岸壁',sub:'長距離',x:-24,z:-22},{n:3,name:'卸貨平台',sub:'高台',x:-15,z:-16},{n:4,name:'倉庫走道',sub:'近距離',x:-20,z:17.5}]};
+// map sizes: each size comes with its own match length (the map decides the length)
+const SIZES={small:{hx:33,hz:23,len:180,name:'小型',en:'SMALL'},std:{hx:41,hz:29,len:300,name:'標準',en:'STANDARD'},large:{hx:50,hz:35,len:600,name:'大型',en:'LARGE'}};
+// scale a map drawn for the 82 x 58 standard field; stairs and parapets keep their offset to the nearest deck
+const KEEP_SIZE={crate:1,tall:1,machine:1,rock:1,tree:1,mound:1,container:1,bollard:1,pillar:1,stair:1,deck:1,parapet:1,radio:1,tower:1,hut:1,log:1};
+function rescaleMap(def,sx,sz){
+  const decks=[...def.west,...def.center].filter(o=>o[5]==='deck'),P=(x,z)=>[x*sx,z*sz];
+  const one=o=>{let [x,z]=P(o[0],o[1]);
+    if(o[5]==='stair'||o[5]==='parapet'){let best=null,bd=1e9;for(const d of decks){const dd=Math.hypot(d[0]-o[0],d[1]-o[1]);if(dd<bd){bd=dd;best=d;}}
+      if(best){const q=P(best[0],best[1]);x=q[0]+(o[0]-best[0]);z=q[1]+(o[1]-best[1]);}}
+    const keep=KEEP_SIZE[o[5]];return [x,z,keep||o[2]<1?o[2]:o[2]*sx,keep||o[3]<1?o[3]:o[3]*sz,o[4],o[5]];};
+  def.west=def.west.map(one);def.center=def.center.map(one);
+  def.poi=def.poi.map(p=>P(...p));def.cpoi=def.cpoi.map(p=>P(...p));
+  if(def.lanes)def.lanes=def.lanes.map(l=>l.map(p=>P(...p)));
+  def.areas=def.areas.map(a=>({...a,x:a.x*sx,z:a.z*sz}));
+  if(def.pad)def.pad=P(...def.pad);
+  if(def.cranes)def.cranes=def.cranes.map(c=>[c[0]*sx,c[1]*sz,c[2]*sz]);
+}
+MAPS.desert.size='small';MAPS.indoor.size='small';MAPS.jungle.size='std';MAPS.snow.size='std';MAPS.port.size='large';
+for(const id in MAPS){const d=MAPS[id],z=SIZES[d.size];d.len=z.len;if(z.hx!==41)rescaleMap(d,z.hx/41,z.hz/29);}
 const MAP_ORDER=['desert','indoor','jungle','snow','port'];
+function mapBounds(def){const z=SIZES[def.size||'std'];return {minX:-z.hx,maxX:z.hx,minZ:-z.hz,maxZ:z.hz};}
+// the spawn rooms are drawn for the standard field; slide them in so they stay against the end walls
+function spawnShift(def){return 41-SIZES[def.size||'std'].hx;}
+function spawnsFor(def){const d=spawnShift(def),west=SPAWNS[0].map(p=>[p[0]+d,p[1]]);return [west,west.map(mirOf(def))];}
+function buyZoneFor(def){return {x:BZ.x-spawnShift(def),z:BZ.z};}
 // mirror a west-half point to the east half for this map
 function mirOf(def){return def&&def.sym==='x'?(p=>[-p[0],p[1]]):mir;}
 function mapSolids(def){
+  const bb=mapBounds(def),sh=spawnShift(def);
   const out=[];const add=(cx,cz,w,d,h,kind)=>out.push({minX:cx-w/2,maxX:cx+w/2,minZ:cz-d/2,maxZ:cz+d/2,minY:0,maxY:h,cx,cz,w,d,h,kind});
   const m=mirOf(def);
-  [...SPAWN_WALLS,...def.west].forEach(o=>{add(...o);const q=m([o[0],o[1]]);add(q[0],q[1],o[2],o[3],o[4],o[5]);});
+  [...SPAWN_WALLS.map(o=>[o[0]+sh,...o.slice(1)]),...def.west].forEach(o=>{add(...o);const q=m([o[0],o[1]]);add(q[0],q[1],o[2],o[3],o[4],o[5]);});
   def.center.forEach(o=>add(...o));
   const oh=def===MAPS.indoor?7.5:6;
-  add(0,B.minZ-.5,84,1,oh,'outer');add(0,B.maxZ+.5,84,1,oh,'outer');add(B.minX-.5,0,1,60,oh,'outer');add(B.maxX+.5,0,1,60,oh,'outer');
+  const W2=bb.maxX*2+2,D2=bb.maxZ*2+2;add(0,bb.minZ-.5,W2,1,oh,'outer');add(0,bb.maxZ+.5,W2,1,oh,'outer');add(bb.minX-.5,0,1,D2,oh,'outer');add(bb.maxX+.5,0,1,D2,oh,'outer');
   return out;
 }
 function rects(list){const out=[];(list||[]).forEach(r=>{out.push({minX:r[0],maxX:r[1],minZ:r[2],maxZ:r[3]});});return out;}
@@ -186,4 +212,4 @@ function inRect(list,x,z){for(const r of list)if(x>r.minX&&x<r.maxX&&z>r.minZ&&z
 
 
 export {W,WDESC,GEAR,MAG_CLASS,HELMET_HEAD,magCap,headMul,PRICE_MUL,START_MONEY,KILL_REWARD,STREAK_BONUS,MONEY_CAP,RESPAWN,SPAWN_PROT,HP_MAX,TEAM_SIZE,SHOP,DIFF,NAMES,STYLES,PREFS,
-  B,BZ,mir,mirOf,SPAWNS,SPAWN_WALLS,MAPS,MAP_ORDER,mapSolids,rects,inRect};
+  B,BZ,mir,mirOf,SIZES,mapBounds,spawnsFor,buyZoneFor,SPAWNS,SPAWN_WALLS,MAPS,MAP_ORDER,mapSolids,rects,inRect};

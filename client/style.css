@@ -220,6 +220,7 @@ input[type=range]{accent-color:var(--coin);width:180px}
 .mapc canvas{width:100%;height:auto;display:block}
 .mapc .mt{display:flex;justify-content:space-between;align-items:baseline;gap:4px}
 .mapc .mt b{font-size:14px}.mapc .mt small{font:700 10px/1 var(--f-num);letter-spacing:.14em;color:var(--acc)}
+.mapc .msz{font:600 11px/1 var(--f-ui);color:var(--acc);letter-spacing:.04em}
 .mapc .md{font-size:11px;color:var(--muted);line-height:1.45}
 .mapc[aria-pressed="true"]{background:rgba(30,44,58,.92);border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
 .tags{display:flex;gap:4px;flex-wrap:wrap}
