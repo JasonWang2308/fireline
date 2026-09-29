@@ -1137,6 +1137,7 @@ function initOnlineUI(){
   $('olLen').innerHTML=MATCH_LENGTHS.map(v=>`<button type="button" data-v="${v}">${v/60} 分鐘</button>`).join('');
   try{const n=localStorage.getItem('fireline-name');if(n)$('olName').value=n;}catch(err){}
   $('olName').addEventListener('change',()=>{try{localStorage.setItem('fireline-name',myName());}catch(err){}});
+  if(/\.github\.io$/i.test(location.hostname)){const b=$('onlineBtn');b.disabled=true;b.textContent='線上對戰（此網址僅限單機）';b.title='線上對戰要連到開伺服器的那台電腦';}
   $('onlineBtn').addEventListener('click',openOnline);
   $('olClose').addEventListener('click',()=>{$('online').hidden=true;$('menu').hidden=false;});
   $('olCreate').addEventListener('click',async()=>{try{initAudio();const net=await ensureNet();olStatus('已連上伺服器，正在建立房間…');net.send('create',{name:myName()});}catch(err){olStatus(err.message,true);}});

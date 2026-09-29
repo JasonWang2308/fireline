@@ -32,6 +32,11 @@ npm start
 
 伺服器預設監聽所有網路介面。查出你電腦的區網 IP（Windows：`ipconfig`，macOS：`ipconfig getifaddr en0`），朋友用 `http://<你的 IP>:3000` 連進來即可。第一次可能要允許防火牆放行 Node.js。
 
+### 只玩單機：GitHub Pages
+
+單機模式不需要伺服器，可以直接放在 GitHub Pages：repo 的 Settings → Pages → Branch 選 `main`、資料夾 `/ (root)` → Save。
+幾分鐘後網址是 `https://<帳號>.github.io/fireline/`。這個網址上「線上對戰」會停用，因為 GitHub Pages 不能跑遊戲伺服器。
+
 ### 換連接埠
 
 ```bash
