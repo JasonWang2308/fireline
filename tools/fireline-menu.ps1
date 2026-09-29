@@ -33,33 +33,9 @@ function Get-LanIPs {
   return @($ips | Select-Object -Unique)
 }
 
-function Write-LanUrls([int]$Port) {
-  $ips = Get-LanIPs
-  if (-not $ips) { Write-Host '找不到這台電腦的區網位址，請確認已連上 Wi-Fi 或網路線。' -ForegroundColor Yellow; return }
-  Write-Host '給同一個 Wi-Fi 朋友的網址：' -ForegroundColor Green
-  foreach ($ip in $ips) { Write-Host "    http://${ip}:$Port" -ForegroundColor Green }
-  try { Set-Clipboard -Value ("http://" + $ips[0] + ":$Port"); Write-Host '（第一個網址已複製到剪貼簿，可以直接貼給朋友）' } catch {}
-}
-
 function Get-GamePort {
   foreach ($p in 3000, 3001) { $o = Get-PortOwner $p; if ($o -and $o.ProcessName -eq 'node') { return $p } }
   return $null
-}
-
-function Show-FriendUrl {
-  Write-Host ''
-  $port = Get-GamePort
-  if (-not $port) {
-    Write-Host '遊戲伺服器目前沒有在執行，請先選 4 開啟遊戲，朋友才連得進來。下面先列出開啟後的網址：' -ForegroundColor Yellow
-    $port = 3000
-  }
-  Write-LanUrls $port
-  Write-Host ''
-  Write-Host '朋友連不進來的話：' -ForegroundColor Cyan
-  Write-Host '  - 對方要跟你接在同一台路由器（Wi-Fi 或網路線都可以；訪客網路通常互相連不到）'
-  Write-Host '  - 第一次開啟時 Windows 防火牆若有跳窗，要勾「私人網路」並允許 Node.js'
-  Write-Host '  - 連線後選「線上對戰」，你建立房間，再把 4 個字的房間代碼傳給朋友'
-  Wait-Menu
 }
 
 # 伺服器在背景執行（沒有視窗），輸出寫到 logs\server.log，選單可以繼續操作
@@ -85,26 +61,20 @@ function Stop-GameServer {
   Start-Sleep -Milliseconds 600
 }
 
+# 開啟遊戲：伺服器在背景執行，打開瀏覽器，然後直接回到選單（選單上方會顯示朋友網址）
 function Start-Game {
   $port = Get-GamePort
-  if ($port) {
+  if (-not $port) {
+    $port = 3000
+    $owner = Get-PortOwner $port
+    if ($owner) { Write-Host "連接埠 3000 被 $($owner.ProcessName) 占用，改用 3001。" -ForegroundColor Yellow; $port = 3001 }
     Write-Host ''
-    Write-Host "遊戲伺服器已經在背景執行，直接打開瀏覽器。" -ForegroundColor Cyan
-    Start-Process "http://localhost:$port"
-    Wait-Menu; return
+    Write-Host '正在背景啟動遊戲伺服器…' -ForegroundColor Cyan
+    if (-not (Start-ServerBackground $port)) { Wait-Menu; return }
   }
-  $port = 3000
-  $owner = Get-PortOwner $port
-  if ($owner) { Write-Host "連接埠 3000 被 $($owner.ProcessName) 占用，改用 3001。" -ForegroundColor Yellow; $port = 3001 }
-  Write-Host ''
-  Write-Host '正在背景啟動遊戲伺服器…' -ForegroundColor Cyan
-  if (-not (Start-ServerBackground $port)) { Wait-Menu; return }
   Start-Process "http://localhost:$port"
-  Write-Host "已啟動，瀏覽器會打開 http://localhost:$port" -ForegroundColor Green
-  Write-Host '伺服器在背景執行，可以繼續用選單（例如選 3 看朋友網址）。選 5 離開時會一併關閉伺服器。'
-  Write-Host ''
-  Write-LanUrls $port
-  Wait-Menu
+  $ips = Get-LanIPs
+  if ($ips) { try { Set-Clipboard -Value ("http://" + $ips[0] + ":$port") } catch {} }
 }
 
 function Update-Game {
@@ -133,7 +103,7 @@ function Update-Game {
     Stop-GameServer
     if (Start-ServerBackground $port) { Write-Host '背景的遊戲伺服器已換成新版，瀏覽器重新整理（F5）就是最新版。' -ForegroundColor Green }
   } else {
-    Write-Host '選 4 開啟遊戲。'
+    Write-Host '選 3 開啟遊戲。'
   }
   if ((Get-FileHash $menuFile).Hash -ne $before) {
     Write-Host ''
@@ -176,21 +146,26 @@ while ($true) {
   Write-Host '=========================================='
   Write-Host '   火線交鋒 FIRELINE' -ForegroundColor Yellow
   Write-Host "   遊戲資料夾：$GameDir"
-  if ($port) { Write-Host "   伺服器：背景執行中 http://localhost:$port" -ForegroundColor Green }
-  else { Write-Host '   伺服器：未啟動' -ForegroundColor DarkGray }
+  if ($port) {
+    Write-Host "   伺服器：背景執行中 http://localhost:$port" -ForegroundColor Green
+    $ips = Get-LanIPs
+    if ($ips) {
+      Write-Host '   給朋友的網址（同一台路由器，Wi-Fi 或網路線都可以）：' -ForegroundColor Green
+      foreach ($ip in $ips) { Write-Host "     http://${ip}:$port" -ForegroundColor Green }
+      Write-Host '   第一個網址已複製到剪貼簿，直接貼給朋友即可'
+    } else { Write-Host '   找不到這台電腦的區網位址，請確認已連上網路。' -ForegroundColor Yellow }
+  } else { Write-Host '   伺服器：未啟動' -ForegroundColor DarkGray }
   Write-Host '=========================================='
   Write-Host ''
   Write-Host '  1. 推送這台電腦的修改到 GitHub'
   Write-Host '  2. 從 GitHub 更新到最新版'
-  Write-Host '  3. 顯示同一個 Wi-Fi 朋友的網址'
-  Write-Host '  4. 開啟遊戲'
-  Write-Host '  5. 離開（會關閉遊戲伺服器）'
+  if ($port) { Write-Host '  3. 開啟遊戲（伺服器已在執行，再打開一次瀏覽器）' } else { Write-Host '  3. 開啟遊戲' }
+  Write-Host '  4. 離開（會關閉遊戲伺服器）'
   Write-Host ''
-  switch (Read-Host '請輸入 1-5 後按 Enter') {
+  switch (Read-Host '請輸入 1-4 後按 Enter') {
     '1' { Push-Changes }
     '2' { Update-Game }
-    '3' { Show-FriendUrl }
-    '4' { Start-Game }
-    '5' { if (Get-GamePort) { Write-Host '正在關閉遊戲伺服器…'; Stop-GameServer }; exit }
+    '3' { Start-Game }
+    '4' { if (Get-GamePort) { Write-Host '正在關閉遊戲伺服器…'; Stop-GameServer }; exit }
   }
 }
