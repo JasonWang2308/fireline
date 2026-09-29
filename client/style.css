@@ -223,10 +223,6 @@ input[type=range]{accent-color:var(--coin);width:180px}
 .mapc .mt b{font-size:14px}.mapc .mt small{font:700 10px/1 var(--f-num);letter-spacing:.14em;color:var(--acc)}
 .mapc .md{font-size:11px;color:var(--muted);line-height:1.45}
 .mapc[aria-pressed="true"]{background:rgba(30,44,58,.92);border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
-.areas{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
-.areas li{font-size:12px;background:rgba(255,255,255,.06);border:1px solid var(--line);padding:4px 8px;display:flex;gap:6px;align-items:center}
-.areas li b{font:700 11px/1 var(--f-num);color:#0b1117;background:var(--map,var(--coin));border-radius:50%;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center}
-.areas li small{color:var(--muted)}
 .tags{display:flex;gap:4px;flex-wrap:wrap}
 .tags span{font:600 11px/1 var(--f-ui);padding:3px 6px;border:1px solid rgba(247,185,40,.5);color:var(--coin)}
 .menu-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}

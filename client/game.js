@@ -979,20 +979,18 @@ function initMapPick(){
     const cv=document.createElement('canvas');cv.width=164;cv.height=116;drawMapTo(cv.getContext('2d'),mapSolids(d),d,2,false);
     b.appendChild(cv);const t=document.createElement('span');t.className='mt';t.innerHTML=`<b>${d.name}</b><small>${d.en}</small>`;b.appendChild(t);
     const p=document.createElement('span');p.className='md';p.textContent=d.desc;b.appendChild(p);
-    b.addEventListener('click',()=>{mapChoice=id;loadMap(id);box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));$('mapAreas').innerHTML=areaList(d);});
+    b.addEventListener('click',()=>{mapChoice=id;loadMap(id);box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
     box.appendChild(b);});
   // random: resolved when the match starts
   const b=document.createElement('button');b.type='button';b.className='mapc';b.setAttribute('aria-pressed','false');b.style.setProperty('--acc','#f7b928');
   const cv=document.createElement('canvas');cv.width=164;cv.height=116;drawRandomCard(cv.getContext('2d'));b.appendChild(cv);
   const t=document.createElement('span');t.className='mt';t.innerHTML='<b>隨機</b><small>RANDOM</small>';b.appendChild(t);
   const p=document.createElement('span');p.className='md';p.textContent='每局開始時從 4 張地圖中隨機抽一張。';b.appendChild(p);
-  b.addEventListener('click',()=>{mapChoice='random';box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));$('mapAreas').innerHTML=RANDOM_NOTE;});
+  b.addEventListener('click',()=>{mapChoice='random';box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
   box.appendChild(b);
-  $('mapAreas').innerHTML=areaList(MAPS[mapId]);
   document.documentElement.style.setProperty('--map',MAPS[mapId].accent);
 }
 let mapChoice='desert';
-const RANDOM_NOTE='<li><b>?</b>開局時才揭曉地圖<small>沙漠遺跡、室內工廠、叢林山谷、雪地基地</small></li>';
 function randomMap(){return MAP_ORDER[(Math.random()*MAP_ORDER.length)|0];}
 function drawRandomCard(g){
   const w=164,h=116;g.fillStyle='#1b2833';g.fillRect(0,0,w,h);
@@ -1002,7 +1000,6 @@ function drawRandomCard(g){
 function mapToast(id){const d=MAPS[id];const el=document.createElement('div');el.className='kn';el.style.borderBottomColor=d.accent;
   el.innerHTML=`<span class="tag" style="color:${d.accent}">RANDOM MAP</span><span class="nm"></span>`;el.querySelector('.nm').textContent='本局地圖：'+d.name;
   const k=$('killNote');k.prepend(el);setTimeout(()=>el.remove(),4500);}
-function areaList(d){return d.areas.map(a=>`<li><b>${a.n}</b>${a.name}<small>${a.sub}</small></li>`).join('');}
 
 /* ================= ONLINE ================= */
 let online=null; // { net, room, endAt, slot, sendT, remotes: Map<id, ent> }
