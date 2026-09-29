@@ -8,6 +8,8 @@ const W={
   h9:      {name:'H-9 重型手槍',      cls:'手槍',        slot:2,dmg:72, pellets:1,rpm:110, mag:6,  reserve:24, reload:2.2,recoil:1.25,range:30,speed:.97,price:700, auto:false,spread:.016, botAcc:.48,look:'h9',tags:['爆頭一擊']},
   dual:    {name:'D-9 雙槍',          cls:'手槍',        slot:2,dmg:24, pellets:1,rpm:520, mag:30, reserve:90, reload:3.0,recoil:.4, range:22,speed:.98, price:800, auto:false,spread:.022,botAcc:.42,look:'dual',tags:['雙持']},
   knife:   {name:'小刀',              cls:'近戰',        slot:3,dmg:50, pellets:1,rpm:130, mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.1,speed:1.1,price:0,   auto:true, spread:0,   botAcc:.75,look:'knife',melee:true,tags:['背刺 110']},
+  katana:  {name:'武士刀',            cls:'近戰',        slot:3,dmg:65, pellets:1,rpm:100, mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.6,speed:1.05,price:1200,auto:true,spread:0,  botAcc:.75,look:'katana',melee:true,dash:{cd:5,dist:6.5,time:.22,dmg:100},tags:['右鍵 衝刺拔刀斬','冷卻 5 秒']},
+  axe:     {name:'戰斧',              cls:'近戰',        slot:3,dmg:60, pellets:1,rpm:80,  mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.3,speed:.96, price:900, auto:true,spread:0,  botAcc:.75,look:'axe',melee:true,charge:{time:1.5,max:130},tags:['按住右鍵蓄力','最高 130 傷害']},
   smg:     {name:'V-9 衝鋒槍',        cls:'衝鋒槍',      slot:1,dmg:22, pellets:1,rpm:850, mag:30, reserve:120,reload:2.1,recoil:.25,range:22,speed:.97, price:1500,auto:true, spread:.026,botAcc:.36,look:'smg',tags:['穩定']},
   rapid:   {name:'SM-12 速射衝鋒槍',  cls:'衝鋒槍',      slot:1,dmg:16, pellets:1,rpm:1100,mag:50, reserve:150,reload:2.4,recoil:.42,range:16,speed:.98, price:1800,auto:true, spread:.036,botAcc:.34,look:'rapid',tags:['極高射速']},
   shotgun: {name:'BR-12 泵動霰彈槍',  cls:'霰彈槍',      slot:1,dmg:17, pellets:8,rpm:70,  mag:6,  reserve:30, reload:2.6,recoil:1.1,range:10,speed:.93, price:2000,auto:false,spread:.085,botAcc:.5, look:'shotgun',tags:['一發爆發']},
@@ -23,6 +25,7 @@ const W={
 };
 const WDESC={
   p9:'每次重生免費配發的基本手槍',knife:'免費近戰武器，從背後攻擊一刀倒地',
+  katana:'攻擊距離長的近戰武器。右鍵向前衝刺約 6.5 公尺，途中斬到的第一個敵人受到 100 傷害，冷卻 5 秒',axe:'單擊 60 傷害。按住右鍵蓄力，放開時揮出重擊，蓄滿 1.5 秒達到上限 130 傷害；蓄力時移動變慢',
   magnum:'單發傷害高的平價半自動副武器',revolver:'六發左輪，精準度極高、射程遠，中遠距離也能爆頭一槍倒地，但裝填慢',h9:'近中距離的重火力副武器，爆頭一槍倒地，主武器沒子彈時的救命槍',dual:'雙持連射，彈匣大但裝填慢',
   smg:'後座穩、好控制的近距離主力',rapid:'射速極高、火力猛，但後座偏大、射程短，適合貼身',
   shotgun:'近距離一發爆發，打不中就很危險',autoshot:'單發較弱但可連續射擊，近距離持續壓制',
@@ -45,6 +48,7 @@ const SHOP=[
   {group:'步槍 RIFLE',items:['carbine','burst','rifle','tactical']},
   {group:'精準與栓動 MARKSMAN',items:['dmr','scout','sniper']},
   {group:'重型武器 HEAVY',items:['heavy']},
+  {group:'近戰 MELEE',items:['katana','axe']},
   {group:'裝備 GEAR',items:['armor','boots','gloves']},
 ];
 const DIFF={easy:{acc:.55,react:.8},std:{acc:.8,react:.5},hard:{acc:1.05,react:.3}};

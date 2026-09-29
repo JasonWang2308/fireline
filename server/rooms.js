@@ -136,7 +136,12 @@ export class Rooms {
         match.humanFire(c.id, { wk: m.wk, o, d, ts: num(m.ts) }, now);
         break;
       }
-      case 'melee': { if (match) match.humanMelee(c.id, { ts: num(m.ts) }, now); break; }
+      case 'melee': {
+        if (!match) return;
+        const kind = m.kind === 'dash' || m.kind === 'heavy' ? m.kind : 'swing';
+        match.humanMelee(c.id, { ts: num(m.ts), kind, charge: num(m.charge) ?? 0, yaw: num(m.yaw) }, now);
+        break;
+      }
       case 'reload': { if (match && typeof m.wk === 'string') match.humanReload(c.id, m.wk); break; }
       case 'buy': { if (match && typeof m.key === 'string' && (W[m.key] || GEAR[m.key])) match.humanBuy(c.id, m.key); break; }
       case 'leave':

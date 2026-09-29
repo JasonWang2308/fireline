@@ -12,7 +12,7 @@
 //   start    {}                                host only, lobby only
 //   state    { s:[x,y,z,yaw,pitch,weapon,alive] }        ~20/s while playing
 //   fire     { wk, ts, o:[x,y,z], d:[[dx,dy,dz],...] }   one entry per pellet; ts = server time the shooter was seeing
-//   melee    { ts }
+//   melee    { ts, kind:'swing'|'heavy'|'dash', charge?, yaw? }  heavy = axe charge (s), dash = katana
 //   reload   { wk }
 //   buy      { key }
 //   leave    {}

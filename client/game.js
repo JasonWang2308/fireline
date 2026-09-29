@@ -212,6 +212,8 @@ function makeGun(look){
     case 'rifle':add(.07,.1,.44,0,0,-.08,GM.poly);add(.075,.08,.26,0,0,-.4,GM.tan);add(.03,.03,.2,0,.01,-.62,GM.metal);add(.05,.18,.08,0,-.13,-.13,GM.metal,.25);add(.045,.11,.06,0,-.08,.08,GM.poly,-.2);add(.06,.1,.26,0,-.02,.3,GM.tan);add(.03,.025,.32,0,.065,-.12,GM.metal);tip=-.72;fore=-.4;break;
     case 'sniper':add(.07,.09,.5,0,0,-.05,GM.metal);add(.035,.035,.55,0,.01,-.56,GM.metal);add(.055,.055,.3,0,.1,-.08,GM.metal);add(.05,.05,.01,0,.1,-.235,GM.glass);add(.07,.12,.34,0,-.02,.36,GM.tan);add(.05,.08,.08,0,-.09,-.05,GM.metal);add(.045,.1,.06,0,-.08,.1,GM.tan,-.2);tip=-.84;fore=-.35;break;
     case 'dual':{const l=makeGun('pistol'),r=makeGun('pistol');l.position.x=-.2;r.position.x=.2;g.add(l,r);tip=-.19;fore=0;break;}
+    case 'katana':add(.034,.038,.24,0,-.01,.14,GM.glove);add(.075,.075,.016,0,0,.01,GM.tan);add(.012,.036,.64,0,.012,-.32,GM.blade);add(.014,.01,.64,0,.032,-.32,GM.metal);tip=-.66;fore=0;break;
+    case 'axe':add(.036,.036,.56,0,-.03,.02,GM.wood);add(.024,.15,.12,0,.05,-.24,GM.metal);add(.012,.19,.03,0,.05,-.31,GM.blade);add(.04,.05,.05,0,-.04,-.22,GM.metal);tip=-.32;fore=0;break;
     case 'knife':add(.032,.034,.12,0,-.01,.04,GM.poly);add(.06,.018,.02,0,0,-.03,GM.metal);add(.012,.038,.2,0,.004,-.14,GM.blade);tip=-.24;fore=0;break;
     case 'h9':add(.07,.09,.3,0,0,-.08,GM.metal);add(.06,.15,.08,0,-.1,.04,GM.tan,-.25);add(.02,.03,.08,0,.06,-.18,GM.metal);tip=-.24;fore=0;break;
     case 'rapid':add(.06,.1,.3,0,0,-.05,GM.poly);add(.03,.03,.1,0,.01,-.25,GM.metal);add(.04,.26,.05,0,-.16,-.06,GM.metal);add(.045,.11,.06,0,-.08,.07,GM.poly,-.2);add(.03,.05,.16,0,-.02,.18,GM.metal);tip=-.31;fore=-.18;break;
@@ -275,7 +277,7 @@ function buildViewmodel(){
     if(look!=='knife'){hand(-.02,-.06,f);arm(-.15,-.17,f+.2,.55,.75,.34);}
     vmFlash=flash(0,gun.userData.tip-.06);
   }
-  const base={revolver:[.15,-.16,-.44],h9:[.15,-.16,-.42],rapid:[.2,-.2,-.36],autoshot:[.2,-.22,-.28],carbine:[.2,-.21,-.32],burst:[.2,-.21,-.3],tactical:[.2,-.21,-.3],dmr:[.2,-.21,-.28],scout:[.2,-.21,-.3],pistol:[.15,-.16,-.4],magnum:[.15,-.16,-.42],dual:[0,-.17,-.4],knife:[.2,-.19,-.34],smg:[.2,-.21,-.36],shotgun:[.2,-.22,-.28],rifle:[.2,-.21,-.3],sniper:[.2,-.21,-.3],heavy:[.22,-.25,-.28]}[look];
+  const base={katana:[.24,-.26,-.34],axe:[.22,-.24,-.34],revolver:[.15,-.16,-.44],h9:[.15,-.16,-.42],rapid:[.2,-.2,-.36],autoshot:[.2,-.22,-.28],carbine:[.2,-.21,-.32],burst:[.2,-.21,-.3],tactical:[.2,-.21,-.3],dmr:[.2,-.21,-.28],scout:[.2,-.21,-.3],pistol:[.15,-.16,-.4],magnum:[.15,-.16,-.42],dual:[0,-.17,-.4],knife:[.2,-.19,-.34],smg:[.2,-.21,-.36],shotgun:[.2,-.22,-.28],rifle:[.2,-.21,-.3],sniper:[.2,-.21,-.3],heavy:[.22,-.25,-.28]}[look];
   hold.userData.base=base;hold.userData.look=look;hold.position.set(...base);
   vmGun=hold;vmScene.add(hold);
 }
@@ -324,7 +326,7 @@ function sfxTone(freqs,dur,vol,type){if(!AC||muted)return;const t=AC.currentTime
 
 /* ================= ENTITIES ================= */
 const ents=[];let P=null;
-function curW(e){return e.slot===3?'knife':(e.slot===1&&e.primary)?e.primary:e.secondary;}
+function curW(e){return e.slot===3?(e.melee||'knife'):(e.slot===1&&e.primary)?e.primary:e.secondary;}
 function priceOf(k){const base=GEAR[k]?GEAR[k].price:W[k].price;return Math.round(base*(PRICE_MUL[matchLen]||1)/50)*50;}
 function makeEnt(name,team,isPlayer,style,bot){
   const e={name,team,isPlayer,bot:bot===undefined?!isPlayer:bot,pos:new THREE.Vector3(),vel:new THREE.Vector3(),vy:0,onGround:true,yaw:0,pitch:0,hp:HP_MAX,armor:false,alive:false,respawnT:0,spawnProt:0,
@@ -333,7 +335,7 @@ function makeEnt(name,team,isPlayer,style,bot){
   if(!isPlayer)e.mesh=makeSoldier(e);
   return e;
 }
-function giveWeapon(e,k){const w=W[k];e.ammo[k]={mag:w.mag,reserve:w.reserve};if(w.slot===1){e.primary=k;e.slot=1;}else{e.secondary=k;e.slot=2;}e.reloadT=0;e.swapT=.35;
+function giveWeapon(e,k){const w=W[k];if(w.slot===3){e.melee=k;e.slot=3;}else{e.ammo[k]={mag:w.mag,reserve:w.reserve};if(w.slot===1){e.primary=k;e.slot=1;}else{e.secondary=k;e.slot=2;}}e.reloadT=0;e.swapT=.35;
   if(e.isPlayer)buildViewmodel();else setSoldierGun(e);}
 function buy(e,key){
   if(!inBuyZone(e)||!e.alive)return false;
@@ -341,6 +343,7 @@ function buy(e,key){
   const pr=priceOf(key);
   if(GEAR[key]){if(e[key]||e.money<pr)return false;e.money-=pr;e[key]=true;return true;}
   if(e.money<pr)return false;if(e.primary===key||e.secondary===key)return false;
+  if(e.melee===key)return false;
   e.money-=pr;giveWeapon(e,key);return true;
 }
 function botBuy(e){
@@ -356,7 +359,7 @@ function spawn(e){
     let occ=0;for(const o of ents)if(o!==e&&o.alive&&Math.hypot(o.pos.x-p[0],o.pos.z-p[1])<1.2)occ=1;
     const sc=md+Math.random()*4-(occ?50:0);if(sc>bs){bs=sc;best=p;}}
   e.pos.set(best[0]+rand(-.3,.3),0,best[1]+rand(-.3,.3));e.vel.set(0,0,0);e.vy=0;e.yaw=e.team===0?-PI/2:PI/2;e.pitch=0;
-  e.hp=HP_MAX;e.alive=true;e.armor=false;e.boots=false;e.gloves=false;e.lastSlot=1;e.primary=null;e.secondary='p9';e.slot=2;e.ammo={p9:{mag:W.p9.mag,reserve:W.p9.reserve}};
+  e.hp=HP_MAX;e.alive=true;e.armor=false;e.boots=false;e.gloves=false;e.lastSlot=1;e.primary=null;e.secondary='p9';e.melee='knife';e.dashCd=0;e.dashT=0;e.chargeT=0;e.slot=2;e.ammo={p9:{mag:W.p9.mag,reserve:W.p9.reserve}};
   e.reloadT=0;e.fireCd=0;e.swapT=0;e.bloom=0;e.spawnProt=SPAWN_PROT;e.deadT=0;
   if(e.isPlayer){buildViewmodel();}
   else{const a=e.ai;a.path=null;a.goal=null;a.route=[];a.target=null;a.lastSeen=null;a.stuckT=0;a.lastX=e.pos.x;a.lastZ=e.pos.z;
@@ -459,14 +462,30 @@ function playerFire(){
   if(w.bolt){setTimeout(()=>sfxTone([360,290],.05,.1,'square'),380);setTimeout(()=>sfxTone([520,430],.05,.1,'square'),760);}
 }
 
-function playerMelee(){
-  const e=P,w=W.knife;e.fireCd=60/w.rpm;e.spawnProt=0;e.lastShotT=gameTime;vmKick=.12;sfxSwish(.35);
-  if(online){online.net.send('melee',{ts:Math.round(online.net.serverNow()-INTERP_MS)});return;}
+function meleeHit(e,w,dmg,wk){
   const fx=-Math.sin(e.yaw),fz=-Math.cos(e.yaw);let best=null,bd=1e9;eyeOf(e,_e1);
   for(const o of ents){if(o.team===e.team||!o.alive||o.remote)continue;const dx=o.pos.x-e.pos.x,dz=o.pos.z-e.pos.z,d=Math.hypot(dx,dz);
     if(d>w.range||Math.abs(o.pos.y-e.pos.y)>1.2)continue;if((dx*fx+dz*fz)/Math.max(d,.01)<.6)continue;if(!los(_e1,chestOf(o,_c1)))continue;if(d<bd){bd=d;best=o;}}
-  if(best){const back=isBehind(e,best);const killed=damage(best,e,back?110:w.dmg,'knife',false);if(!killed){hitMark(false);sfxTone([520],.06,.1,'square');}
+  if(best){const back=isBehind(e,best);const killed=damage(best,e,back?Math.max(110,dmg*1.5):dmg,wk,false);if(!killed){hitMark(false);sfxTone([520],.06,.1,'square');}
     addPuff(chestOf(best),true);}
+}
+function playerMelee(kind,charge){
+  const e=P,wk=curW(e),w=W[wk];kind=kind||'swing';
+  let dmg=w.dmg;if(kind==='heavy'&&w.charge)dmg=w.dmg+(w.charge.max-w.dmg)*clamp(charge/w.charge.time,0,1);
+  e.fireCd=60/w.rpm*(kind==='heavy'?1.2:1);e.spawnProt=0;e.lastShotT=gameTime;vmKick=kind==='heavy'?.16:.12;sfxSwish(kind==='heavy'?.5:.35);
+  if(online){online.net.send('melee',{ts:Math.round(online.net.serverNow()-INTERP_MS),kind,charge:charge||0});return;}
+  meleeHit(e,w,dmg,wk);
+}
+// katana right click: short dash that cuts the first enemy in its path
+function startDash(){
+  const e=P,w=W[curW(e)];e.dashT=w.dash.time;e.dashCd=w.dash.cd;e.dashHit=false;e.dashDir={x:-Math.sin(e.yaw),z:-Math.cos(e.yaw)};e.spawnProt=0;vmKick=.2;sfxSwish(.55);
+  if(online)online.net.send('melee',{ts:Math.round(online.net.serverNow()-INTERP_MS),kind:'dash',yaw:e.yaw});
+}
+function dashStep(e,dt){
+  const w=W[curW(e)];e.dashT-=dt;const sp=w.dash.dist/w.dash.time;e.vel.x=e.dashDir.x*sp;e.vel.z=e.dashDir.z*sp;
+  if(online||e.dashHit)return;
+  for(const o of ents){if(o.team===e.team||!o.alive)continue;const dx=o.pos.x-e.pos.x,dz=o.pos.z-e.pos.z,d=Math.hypot(dx,dz);
+    if(d<1.3&&(dx*e.dashDir.x+dz*e.dashDir.z)>-.2){e.dashHit=true;e.dashT=0;const killed=damage(o,e,w.dash.dmg,curW(e),false);if(!killed){hitMark(false);sfxTone([520],.06,.1,'square');}addPuff(chestOf(o),true);break;}}
 }
 function botMelee(e,tg){
   const w=W.knife,D=DIFF[difficulty];e.fireCd=60/w.rpm+rand(.05,.2);e.lastShotT=gameTime;e.spawnProt=0;
@@ -564,7 +583,7 @@ function syncBotMesh(e,dt){
 /* ================= STATE / INPUT ================= */
 let state='menu',paused=false,matchLen=600,timeLeft=600,teamKills=[0,0],difficulty='std',sensMul=1.4;
 const keys={};let trigger=false,shotLatch=false,rightHeld=false,scoped=false,locked=false,noLock=false,boardOpen=false,buyOpen=false;
-let vmKick=0,vmBob=0,flashT=0,touchJump=false;
+let prevRight=false,vmKick=0,vmBob=0,flashT=0,touchJump=false;
 const joy={id:null,x0:0,y0:0,dx:0,dy:0},look={id:null,x:0,y:0};
 
 function requestLock(){if(isTouch||noLock)return;try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(lockFailed);}catch(err){lockFailed();}}
@@ -626,7 +645,7 @@ if(isTouch){
   hold('tFire',()=>{trigger=true;},()=>{trigger=false;});
   hold('tReload',()=>{if(P.alive)startReload(P);});
   hold('tSwap',()=>{if(P.alive)cycleSlot(P,1);});
-  hold('tScope',()=>{rightHeld=!rightHeld;});
+  hold('tScope',()=>{if(W[curW(P)].melee)rightHeld=true;else rightHeld=!rightHeld;},()=>{if(W[curW(P)].melee)rightHeld=false;});
   hold('tBuy',()=>{toggleBuy();});
   hold('tBoard',()=>{showBoard(!boardOpen);});
 }
@@ -667,12 +686,14 @@ function updateHud(){
   setText('areaTag',area||MAP.name);
   setText('killsA',String(teamKills[0]));setText('killsB',String(teamKills[1]));
   setText('timeNum',fmtTime(timeLeft));$('clock').classList.toggle('warn',timeLeft<=30);
-  setText('wName',w.name);setText('magNum',w.melee?'—':String(a.mag));setText('resNum',w.melee?'近戰':String(a.reserve));
+  setText('wName',w.name);
+  let skill='';if(w.dash)skill=e.dashCd>0?`拔刀斬 冷卻 ${e.dashCd.toFixed(1)} 秒`:'右鍵 衝刺拔刀斬 · 就緒';else if(w.charge)skill=e.chargeT>0?`蓄力中 ${Math.round(w.dmg+(w.charge.max-w.dmg)*Math.min(1,e.chargeT/w.charge.time))} 傷害${e.chargeT>=w.charge.time?' · 已達上限':''}`:'按住右鍵蓄力 · 放開重擊';
+  setText('skillTag',skill);$('skillTag').hidden=!skill;$('skillTag').classList.toggle('cool',!!(w.dash&&e.dashCd>0));setText('magNum',w.melee?'—':String(a.mag));setText('resNum',w.melee?'近戰':String(a.reserve));
   $('ammoBox').classList.toggle('empty',!w.melee&&a.mag===0);
-  setText('slot1','1 '+(e.primary?W[e.primary].name.split(' ')[0]:'主武器 —'));setText('slot2','2 '+W[e.secondary].name.split(' ')[0]);
+  setText('slot1','1 '+(e.primary?W[e.primary].name.split(' ')[0]:'主武器 —'));setText('slot2','2 '+W[e.secondary].name.split(' ')[0]);setText('slot3','3 '+W[e.melee||'knife'].name);
   $('slot1').classList.toggle('on',e.slot===1&&!!e.primary);$('slot2').classList.toggle('on',e.slot===2||(e.slot===1&&!e.primary));$('slot3').classList.toggle('on',e.slot===3);
   const rb=$('reloadBar');if(e.reloadT>0){rb.style.visibility='visible';$('reloadFill').style.transform=`scaleX(${1-e.reloadT/W[e.reloadKey].reload})`;}else rb.style.visibility='hidden';
-  const zone=e.alive&&inBuyZone(e);$('zoneChip').hidden=!zone||buyOpen;if(isTouch){$('tBuy').hidden=!zone;$('tScope').hidden=!w.scope;}
+  const zone=e.alive&&inBuyZone(e);$('zoneChip').hidden=!zone||buyOpen;if(isTouch){$('tBuy').hidden=!zone;$('tScope').hidden=!(w.scope||w.dash||w.charge);$('tScope').textContent=w.dash?'拔刀':w.charge?'蓄力':'開鏡';}
   if(buyOpen&&!zone)toggleBuy(false,true);
   const moving=Math.hypot(e.vel.x,e.vel.z)/5.6;
   let sp=w.scope?(scoped?w.scopeSpread:w.spread):w.spread;sp+=e.bloom+moving*(w.scope&&!scoped?.05:.02)+(e.onGround?0:.05);
@@ -725,6 +746,7 @@ const SIL={
   carbine:[[14,14,20,8],[34,11,32,11],[66,13,16,4],[50,22,7,13],[38,22,7,9],[42,6,10,5]],burst:[[6,14,24,9],[30,10,40,13],[70,13,22,4],[52,23,8,12],[38,23,7,9],[40,5,22,5]],
   tactical:[[4,14,26,9],[30,11,36,11],[66,14,30,3],[36,5,20,5],[48,22,7,8],[40,22,6,8]],dmr:[[2,13,28,11],[30,11,38,12],[68,14,30,3],[36,4,24,6],[50,23,8,9],[40,23,6,8]],
   scout:[[4,14,26,8],[30,13,32,8],[62,15,34,2],[36,6,22,5],[58,11,6,3],[42,21,6,7]],
+  katana:[[4,18,20,5],[24,14,3,12],[27,18,68,3],[27,17,66,1]],axe:[[8,19,70,4],[70,7,14,26],[66,15,6,8]],
   knife:[[14,17,26,7],[40,13,5,15],[45,17,44,5],[45,17,50,2]],
   dual:[[8,6,40,8],[12,13,10,14],[50,18,40,8],[54,25,10,14]],
   heavy:[[6,12,22,11],[28,9,46,15],[74,14,24,5],[40,24,16,12],[80,19,4,9]],
@@ -733,7 +755,7 @@ const GEAR_SVG={armor:'M36 4h8l6 6 6-6h8l6 8v24H30V12z',boots:'M34 4h16v18l18 5c
 function silSVG(look){if(GEAR_SVG[look])return `<svg viewBox="0 0 100 40" aria-hidden="true"><path d="${GEAR_SVG[look]}"/></svg>`;return `<svg viewBox="0 0 100 40" aria-hidden="true">${SIL[look].map(r=>`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}"/>`).join('')}</svg>`;}
 let buySel='rifle';
 function itemInfo(k){if(GEAR[k])return{name:GEAR[k].name,cls:'裝備',price:priceOf(k),look:k};return Object.assign({},W[k],{price:priceOf(k)});}
-function owned(k){return GEAR[k]?!!P[k]:(P.primary===k||P.secondary===k);}
+function owned(k){return GEAR[k]?!!P[k]:(P.primary===k||P.secondary===k||P.melee===k);}
 function statsHTML(k){
   if(GEAR[k])return `<p>${GEAR[k].desc}</p>`;
   const w=W[k];let rows;
@@ -793,14 +815,19 @@ function updatePlayer(dt){
   if(joy.id!==null){f-=joy.dy;s+=joy.dx;}
   const len=Math.hypot(f,s);if(len>1){f/=len;s/=len;}
   const k=curW(e),w=W[k];
+  const rPress=rightHeld&&!prevRight;prevRight=rightHeld;e.dashCd=Math.max(0,(e.dashCd||0)-dt);
+  if(w.dash&&rPress&&e.dashCd<=0&&e.swapT<=0&&!buyOpen)startDash();
+  const charging=!!w.charge&&rightHeld&&!buyOpen&&e.swapT<=0;
+  if(w.charge){if(charging){if(e.fireCd<=0)e.chargeT=Math.min(w.charge.time,(e.chargeT||0)+dt);}else{if(e.chargeT>.12)playerMelee('heavy',e.chargeT);e.chargeT=0;}}else e.chargeT=0;
   scoped=rightHeld&&!!w.scope&&e.reloadT<=0&&e.swapT<=0&&!(w.bolt&&e.fireCd>.12);
-  const spd=5.6*w.speed*(e.boots?1.12:1)*(inWater(e.pos.x,e.pos.z)?.6:1)*(scoped?.55:1);
+  const spd=5.6*w.speed*(e.boots?1.12:1)*(inWater(e.pos.x,e.pos.z)?.6:1)*(scoped?.55:1)*(charging?.7:1);
   const fx=-Math.sin(e.yaw),fz=-Math.cos(e.yaw),rx=Math.cos(e.yaw),rz=-Math.sin(e.yaw);
   const tvx=(fx*f+rx*s)*spd,tvz=(fz*f+rz*s)*spd;const kk=1-Math.exp(-(e.onGround?14:2.5)*dt);
   e.vel.x+=(tvx-e.vel.x)*kk;e.vel.z+=(tvz-e.vel.z)*kk;
+  if(e.dashT>0)dashStep(e,dt);
   physics(e,dt);
   // fire
-  if(trigger&&!buyOpen&&w.melee){if(e.fireCd<=0&&e.swapT<=0)playerMelee();}
+  if(trigger&&!buyOpen&&w.melee){if(e.fireCd<=0&&e.swapT<=0&&!charging)playerMelee('swing');}
   else if(trigger&&!buyOpen){const a=e.ammo[k];
     if(e.fireCd<=0&&e.reloadT<=0&&e.swapT<=0){
       if(a.mag>0){if(w.burst){if(!shotLatch&&!(e.burstLeft>0)){e.burstLeft=w.burst;shotLatch=true;}}else if(w.auto||!shotLatch){playerFire();shotLatch=true;}}
@@ -818,7 +845,7 @@ function updatePlayer(dt){
   if(vmGun){const b=vmGun.userData.base,sp=Math.hypot(e.vel.x,e.vel.z)/5.6;vmBob+=dt*9*sp;vmKick=Math.max(0,vmKick-dt*.6);
     const rel=e.reloadT>0?Math.sin(clamp(1-e.reloadT/W[e.reloadKey].reload,0,1)*PI):0,sw=e.swapT>0?e.swapT/.35:0,cw=W[curW(e)],bp=(cw.bolt&&e.fireCd>0)?Math.sin(clamp((1-e.fireCd/(60/cw.rpm)-.15)/.7,0,1)*PI):0;
     vmGun.position.set(b[0]+Math.sin(vmBob)*.012*sp,b[1]+Math.abs(Math.cos(vmBob))*.012*sp-rel*.18-sw*.25-bp*.05,b[2]+vmKick);
-    if(vmGun.userData.look==='knife')vmGun.rotation.set(-vmKick*4,vmKick*7,-vmKick*3);else vmGun.rotation.set(vmKick*2.2+rel*.6+bp*.15,bp*.2,rel*.3+bp*.45);vmGun.visible=!scoped;
+    if(W[curW(e)].melee){const cf=e.chargeT&&W[curW(e)].charge?e.chargeT/W[curW(e)].charge.time:0;vmGun.rotation.set(-vmKick*4+cf*.9,vmKick*7-cf*.3,-vmKick*3+cf*.4);vmGun.position.z+=cf*.08;}else vmGun.rotation.set(vmKick*2.2+rel*.6+bp*.15,bp*.2,rel*.3+bp*.45);vmGun.visible=!scoped;
     if(flashT>0){flashT-=dt;if(flashT<=0){vmFlash.visible=false;if(vmFlash2)vmFlash2.visible=false;}}}
 }
 let spotT=0,aimT=0;
@@ -1067,7 +1094,7 @@ function updateRemote(e,dt){
   e.pos.set(a.x+(b.x-a.x)*k,a.y+(b.y-a.y)*k,a.z+(b.z-a.z)*k);e.yaw=a.yaw+angDiff(a.yaw,b.yaw)*k;
   if(dt>0){e.vel.set((e.pos.x-px)/dt,0,(e.pos.z-pz)/dt);if(e.vel.length()>12)e.vel.set(0,0,0);}
   const alive=!!b.alive;if(!alive&&e.alive)e.deadT=0;e.alive=alive;e.mesh.root.visible=true;
-  if(b.wk!==e.netW&&W[b.wk]){e.netW=b.wk;const w=W[b.wk];e.slot=w.slot;if(w.slot===1)e.primary=b.wk;else if(w.slot===2)e.secondary=b.wk;setSoldierGun(e);}
+  if(b.wk!==e.netW&&W[b.wk]){e.netW=b.wk;const w=W[b.wk];e.slot=w.slot;if(w.slot===1)e.primary=b.wk;else if(w.slot===2)e.secondary=b.wk;else e.melee=b.wk;setSoldierGun(e);}
 }
 function remoteShot(m){
   if(!online||state!=='play')return;const e=online.remotes.get(m.id);
@@ -1101,7 +1128,7 @@ function initOnlineUI(){
 }
 
 // dev helper: open the game with ?debug to inspect network state from the console
-if(new URLSearchParams(location.search).has('debug'))window.__fireline={get online(){return online;},get P(){return P;},get ents(){return ents;}};
+if(new URLSearchParams(location.search).has('debug'))window.__fireline={get online(){return online;},get P(){return P;},get ents(){return ents;},get input(){return {rightHeld,trigger,noLock,locked,paused,buyOpen,state};}};
 
 /* ================= BOOT ================= */
 function start(){

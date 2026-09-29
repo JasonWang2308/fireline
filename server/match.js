@@ -50,7 +50,7 @@ export class Match {
   }
 
   /* ---------------- helpers ---------------- */
-  curW(e) { return e.slot === 3 ? 'knife' : (e.slot === 1 && e.primary) ? e.primary : e.secondary; }
+  curW(e) { return e.slot === 3 ? (e.melee || 'knife') : (e.slot === 1 && e.primary) ? e.primary : e.secondary; }
   priceOf(k) { const base = GEAR[k] ? GEAR[k].price : W[k].price; return Math.round(base * (PRICE_MUL[this.len] || 1) / 50) * 50; }
   you(e) {
     if (e.bot) return;
@@ -79,7 +79,7 @@ export class Match {
     }
     Object.assign(e.pos, { x: best[0] + rand(-0.3, 0.3), y: 0, z: best[1] + rand(-0.3, 0.3) });
     e.vel.x = e.vel.z = 0; e.vy = 0; e.yaw = e.team === 0 ? -PI / 2 : PI / 2; e.pitch = 0;
-    Object.assign(e, { hp: HP_MAX, alive: true, armor: false, boots: false, gloves: false, primary: null, secondary: 'p9', slot: 2, lastSlot: 1, reloadT: 0, fireCd: 0, swapT: 0, burstLeft: 0, spawnProt: SPAWN_PROT });
+    Object.assign(e, { hp: HP_MAX, alive: true, armor: false, boots: false, gloves: false, primary: null, secondary: 'p9', melee: 'knife', dashReadyMs: 0, dashUntil: 0, slot: 2, lastSlot: 1, reloadT: 0, fireCd: 0, swapT: 0, burstLeft: 0, spawnProt: SPAWN_PROT });
     e.ammo = { p9: { mag: W.p9.mag, reserve: W.p9.reserve } };
     e.hist.length = 0;
     if (e.bot) {
@@ -94,6 +94,7 @@ export class Match {
 
   giveWeapon(e, k) {
     const w = W[k];
+    if (w.slot === 3) { e.melee = k; e.slot = 3; e.reloadT = 0; e.swapT = 0.35; return; }
     e.ammo[k] = { mag: w.mag, reserve: w.reserve };
     if (w.slot === 1) { e.primary = k; e.slot = 1; } else { e.secondary = k; e.slot = 2; }
     e.reloadT = 0; e.swapT = 0.35;
@@ -102,7 +103,7 @@ export class Match {
     if (!e.alive || !inBuyZone(e) || !(W[key] || GEAR[key]) || key === 'knife' || key === 'p9') return false;
     const pr = this.priceOf(key);
     if (GEAR[key]) { if (e[key] || e.money < pr) return false; e.money -= pr; e[key] = true; }
-    else { if (e.money < pr || e.primary === key || e.secondary === key) return false; e.money -= pr; this.giveWeapon(e, key); }
+    else { if (e.money < pr || e.primary === key || e.secondary === key || e.melee === key) return false; e.money -= pr; this.giveWeapon(e, key); }
     if (!e.bot) { this.emit('bought', { key }, e.id); this.you(e); }
     return true;
   }
@@ -154,7 +155,8 @@ export class Match {
     // movement validation: never faster than the fastest legal speed (+slack for jitter), never through walls
     const dtMs = e.lastStateMs ? Math.min(1000, nowMs - e.lastStateMs) : 1000;
     e.lastStateMs = nowMs;
-    const maxD = 7.5 * (dtMs / 1000) * 1.35 + 0.6;
+    // a katana dash moves ~6.5 m in 0.22 s; allow it only while a server-accepted dash is running
+    const maxD = 7.5 * (dtMs / 1000) * 1.35 + 0.6 + (nowMs < e.dashUntil ? 8 : 0);
     let dx = x - e.pos.x, dz = z - e.pos.z; const d = Math.hypot(dx, dz);
     if (d > maxD) { dx *= maxD / d; dz *= maxD / d; }
     const px = e.pos.x, pz = e.pos.z;
@@ -163,7 +165,7 @@ export class Match {
     if (dtMs > 0) { e.vel.x = (e.pos.x - px) / (dtMs / 1000); e.vel.z = (e.pos.z - pz) / (dtMs / 1000); }
     e.onGround = e.pos.y < 0.05 || e.pos.y > 1;
     e.yaw = yaw; e.pitch = pitch;
-    if (wk === 'knife') e.slot = 3; else if (wk === e.primary) e.slot = 1; else if (wk === e.secondary) e.slot = 2;
+    if (W[wk] && W[wk].melee && wk === (e.melee || 'knife')) e.slot = 3; else if (wk === e.primary) e.slot = 1; else if (wk === e.secondary) e.slot = 2;
   }
   humanReload(id, wk) { const e = this.byId.get(id); if (e && e.alive && (wk === e.primary || wk === e.secondary)) this.startReload(e, wk); }
   humanBuy(id, key) { const e = this.byId.get(id); if (e) { if (!this.buy(e, key)) this.you(e); } }
@@ -202,11 +204,34 @@ export class Match {
   }
   humanMelee(id, m, nowMs) {
     const e = this.byId.get(id); if (!e || e.bot || !e.alive) return;
-    const w = W.knife; if (nowMs - e.lastFireMs < (60000 / w.rpm) * 0.7) return;
-    e.lastFireMs = nowMs; e.spawnProt = 0;
+    const wk = e.melee || 'knife', w = W[wk], kind = m.kind;
     const at = clamp(Number(m.ts) || nowMs, nowMs - MAX_REWIND_MS, nowMs);
-    const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
     const eye = { x: e.pos.x, y: e.pos.y + EYE_Y, z: e.pos.z };
+    if (kind === 'dash') {
+      if (!w.dash || nowMs < e.dashReadyMs) return;
+      e.dashReadyMs = nowMs + w.dash.cd * 1000 * 0.95; e.dashUntil = nowMs + 500; e.spawnProt = 0;
+      const yaw = typeof m.yaw === 'number' ? m.yaw : e.yaw, dx = -Math.sin(yaw), dz = -Math.cos(yaw);
+      let best = null, bt = 1e9;
+      for (const t of this.ents) {
+        if (t.team === e.team || !t.alive) continue;
+        const p = this.posAt(t, at), rx = p.x - e.pos.x, rz = p.z - e.pos.z;
+        const along = rx * dx + rz * dz, side = Math.abs(rx * dz - rz * dx);
+        if (along < -0.3 || along > w.dash.dist + 0.8 || side > 1.2 || Math.abs(p.y - e.pos.y) > 1.2) continue;
+        if (!los(this.world, eye, { x: p.x, y: p.y + CHEST_Y, z: p.z })) continue;
+        if (along < bt) { bt = along; best = t; }
+      }
+      if (best) { const killed = this.damage(best, e, w.dash.dmg, wk, false); this.emit('hit', { kill: killed, hs: false }, e.id); }
+      return;
+    }
+    let dmg = w.dmg, gap = (60000 / w.rpm) * 0.7;
+    if (kind === 'heavy' && w.charge) {
+      // the charge can't be longer than the time since the last swing
+      const c = clamp(Math.min(Number(m.charge) || 0, (nowMs - e.lastFireMs) / 1000 / 0.8), 0, w.charge.time);
+      dmg = w.dmg + (w.charge.max - w.dmg) * (c / w.charge.time);
+    }
+    if (nowMs - e.lastFireMs < gap) return;
+    e.lastFireMs = nowMs; e.spawnProt = 0;
+    const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
     let best = null, bd = 1e9;
     for (const t of this.ents) {
       if (t.team === e.team || !t.alive) continue;
@@ -216,7 +241,7 @@ export class Match {
       if (!los(this.world, eye, { x: p.x, y: p.y + CHEST_Y, z: p.z })) continue;
       if (d < bd) { bd = d; best = t; }
     }
-    if (best) { const killed = this.damage(best, e, this.isBehind(e, best) ? 110 : w.dmg, 'knife', false); this.emit('hit', { kill: killed, hs: false }, e.id); }
+    if (best) { const killed = this.damage(best, e, this.isBehind(e, best) ? Math.max(110, dmg * 1.5) : dmg, wk, false); this.emit('hit', { kill: killed, hs: false }, e.id); }
   }
 
   /* bots ----------------------------------------------------------------- */
