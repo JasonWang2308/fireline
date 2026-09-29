@@ -866,12 +866,14 @@ function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);c
 
 /* ================= MATCH FLOW ================= */
 function startMatch(){
+  let rolled=null;if(!online&&mapChoice==='random'){rolled=randomMap();loadMap(rolled,true);}
   initAudio();if(AC&&AC.state==='suspended')AC.resume();
   state='play';paused=false;gameTime=0;timeLeft=matchLen;teamKills=[0,0];lastHud={};
   $('menu').hidden=true;$('endScr').hidden=true;$('hud').hidden=false;$('deathScr').hidden=true;$('feed').innerHTML='';$('killNote').innerHTML='';
   for(const e of ents){e.money=START_MONEY;e.kills=0;e.deaths=0;e.streak=0;e.alive=false;e.pos.set(9999,0,9999);}
   for(const e of ents)spawn(e);
   if(online){if(!isTouch&&!noLock)setPause(true);}else requestLock();
+  if(rolled)mapToast(rolled);
   document.querySelectorAll('#score .plate').forEach((el,i)=>el.classList.toggle('mine',i===P.team));
 }
 function endMatch(){
@@ -942,11 +944,29 @@ function initMapPick(){
     const cv=document.createElement('canvas');cv.width=164;cv.height=116;drawMapTo(cv.getContext('2d'),mapSolids(d),d,2,false);
     b.appendChild(cv);const t=document.createElement('span');t.className='mt';t.innerHTML=`<b>${d.name}</b><small>${d.en}</small>`;b.appendChild(t);
     const p=document.createElement('span');p.className='md';p.textContent=d.desc;b.appendChild(p);
-    b.addEventListener('click',()=>{loadMap(id);box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));$('mapAreas').innerHTML=areaList(d);});
+    b.addEventListener('click',()=>{mapChoice=id;loadMap(id);box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));$('mapAreas').innerHTML=areaList(d);});
     box.appendChild(b);});
+  // random: resolved when the match starts
+  const b=document.createElement('button');b.type='button';b.className='mapc';b.setAttribute('aria-pressed','false');b.style.setProperty('--acc','#f7b928');
+  const cv=document.createElement('canvas');cv.width=164;cv.height=116;drawRandomCard(cv.getContext('2d'));b.appendChild(cv);
+  const t=document.createElement('span');t.className='mt';t.innerHTML='<b>隨機</b><small>RANDOM</small>';b.appendChild(t);
+  const p=document.createElement('span');p.className='md';p.textContent='每局開始時從 4 張地圖中隨機抽一張。';b.appendChild(p);
+  b.addEventListener('click',()=>{mapChoice='random';box.querySelectorAll('.mapc').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));$('mapAreas').innerHTML=RANDOM_NOTE;});
+  box.appendChild(b);
   $('mapAreas').innerHTML=areaList(MAPS[mapId]);
   document.documentElement.style.setProperty('--map',MAPS[mapId].accent);
 }
+let mapChoice='desert';
+const RANDOM_NOTE='<li><b>?</b>開局時才揭曉地圖<small>沙漠遺跡、室內工廠、叢林山谷、雪地基地</small></li>';
+function randomMap(){return MAP_ORDER[(Math.random()*MAP_ORDER.length)|0];}
+function drawRandomCard(g){
+  const w=164,h=116;g.fillStyle='#1b2833';g.fillRect(0,0,w,h);
+  MAP_ORDER.forEach((id,i)=>{const x=(i%2)*w/2,y=((i/2)|0)*h/2;g.fillStyle=MAPS[id].accent;g.globalAlpha=.28;g.fillRect(x+3,y+3,w/2-6,h/2-6);});
+  g.globalAlpha=1;g.fillStyle='#f7b928';g.font='bold 64px "Chakra Petch",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('?',w/2,h/2+4);
+}
+function mapToast(id){const d=MAPS[id];const el=document.createElement('div');el.className='kn';el.style.borderBottomColor=d.accent;
+  el.innerHTML=`<span class="tag" style="color:${d.accent}">RANDOM MAP</span><span class="nm"></span>`;el.querySelector('.nm').textContent='本局地圖：'+d.name;
+  const k=$('killNote');k.prepend(el);setTimeout(()=>el.remove(),4500);}
 function areaList(d){return d.areas.map(a=>`<li><b>${a.n}</b>${a.name}<small>${a.sub}</small></li>`).join('');}
 
 /* ================= ONLINE ================= */
@@ -1006,7 +1026,7 @@ function renderLobby(){
   $('olLen').querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String(+b.dataset.v===r.settings.len));b.disabled=!isHost;});
   $('olStart').hidden=!isHost;
   $('olHint').textContent=isHost?(r.players.length<2?'把房間代碼傳給朋友，或用「＋ AI」補上電腦玩家。一個人也可以先開始測試。':'所有人到齊後按「開始對戰」。有真人加入時，AI 會自動讓出位置。'):'等待房主開始對戰…';
-  if(r.settings.map!==mapId&&state!=='play')loadMap(r.settings.map);
+  if(MAPS[r.settings.map]&&r.settings.map!==mapId&&state!=='play')loadMap(r.settings.map);
 }
 function entById(id){if(!online)return null;return id===online.net.id?P:online.remotes.get(id);}
 function onlineKill(m){
@@ -1030,6 +1050,7 @@ function startOnlineMatch(m){
   loadMap(m.settings.map,true);
   for(const e of online.remotes.values()){e.alive=true;e.spawnProt=0;e.pos.set(9999,0,9999);e.mesh.root.visible=false;}
   startMatch();
+  if(m.random)mapToast(m.settings.map);
 }
 function applySnap(m){
   if(!online||state!=='play')return;
@@ -1056,7 +1077,7 @@ function remoteShot(m){
 }
 const DIFF_NAME={easy:'新手',std:'標準',hard:'老手'};
 function initOnlineUI(){
-  $('olMap').innerHTML=MAP_ORDER.map(id=>`<button type="button" data-v="${id}">${MAPS[id].name}</button>`).join('');
+  $('olMap').innerHTML=MAP_ORDER.map(id=>`<button type="button" data-v="${id}">${MAPS[id].name}</button>`).join('')+'<button type="button" data-v="random">隨機</button>';
   $('olLen').innerHTML=MATCH_LENGTHS.map(v=>`<button type="button" data-v="${v}">${v/60} 分鐘</button>`).join('');
   try{const n=localStorage.getItem('fireline-name');if(n)$('olName').value=n;}catch(err){}
   $('olName').addEventListener('change',()=>{try{localStorage.setItem('fireline-name',myName());}catch(err){}});

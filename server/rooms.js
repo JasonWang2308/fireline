@@ -1,5 +1,5 @@
 // Rooms, lobby and message routing. During a match the Match class is the authority.
-import { TEAM_SIZE, MAPS, B, W, DIFF, GEAR } from '../shared/game-data.js';
+import { TEAM_SIZE, MAPS, MAP_ORDER, B, W, DIFF, GEAR } from '../shared/game-data.js';
 import { TICK_HZ, MAX_NAME, MATCH_LENGTHS, ROOM_MAX } from '../shared/protocol.js';
 import { Match } from './match.js';
 
@@ -98,7 +98,7 @@ export class Rooms {
       }
       case 'settings': {
         if (!lobby || !isHost) return;
-        if (typeof m.map === 'string' && MAPS[m.map]) room.settings.map = m.map;
+        if (typeof m.map === 'string' && (MAPS[m.map] || m.map === 'random')) room.settings.map = m.map;
         if (MATCH_LENGTHS.includes(m.len)) room.settings.len = m.len;
         if (typeof m.diff === 'string' && DIFF[m.diff]) room.settings.diff = m.diff;
         this.sendRoom(room);
@@ -181,10 +181,13 @@ export class Rooms {
       if (to !== undefined) { const p = room.players.get(to); if (p) this.send(p, msg); }
       else this.broadcast(room, msg, except);
     };
-    room.match = new Match({ mapId: room.settings.map, len: room.settings.len, diff: room.settings.diff, humans, bots: [this.botsFor(room, 0), this.botsFor(room, 1)] }, emit);
+    // 'random' is kept in the lobby settings and rolled again every match
+    const random = room.settings.map === 'random';
+    const mapId = random ? MAP_ORDER[(Math.random() * MAP_ORDER.length) | 0] : room.settings.map;
+    room.match = new Match({ mapId, len: room.settings.len, diff: room.settings.diff, humans, bots: [this.botsFor(room, 0), this.botsFor(room, 1)] }, emit);
     room.phase = 'play';
     room.endAt = now + room.settings.len * 1000;
-    this.broadcast(room, { t: 'start', settings: room.settings, endAt: room.endAt, now, players: room.match.roster() });
+    this.broadcast(room, { t: 'start', settings: { ...room.settings, map: mapId }, random, endAt: room.endAt, now, players: room.match.roster() });
     room.match.begin();
     this.sendRoom(room);
   }

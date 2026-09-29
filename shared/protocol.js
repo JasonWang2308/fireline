@@ -7,7 +7,7 @@
 //   create   { name }                          create a room and join it
 //   join     { name, code }                    join a room by its 4-letter code
 //   team     { team }                          switch team (0 = A, 1 = B), lobby only
-//   settings { map?, len?, diff? }             host only, lobby only
+//   settings { map?, len?, diff? }             host only, lobby only; map may be 'random'
 //   bots     { team, delta } | {fill} | {clear} host only: AI seats per team
 //   start    {}                                host only, lobby only
 //   state    { s:[x,y,z,yaw,pitch,weapon,alive] }        ~20/s while playing
@@ -20,7 +20,7 @@
 // server -> client
 //   welcome  { id }
 //   room     { code, host, phase, settings, bots:[a,b], players:[{id,name,team}], endAt }
-//   start    { settings, endAt, now, players:[{id,name,team,bot}] }
+//   start    { settings, random, endAt, now, players:[{id,name,team,bot}] }  settings.map is the rolled map
 //   snap     { now, p:[[id,x,y,z,yaw,pitch,weapon,alive],...] }  includes bots
 //   shot     { id, look, o, e:[[x,y,z],...] }  tracer for everyone except the shooter
 //   hit      { kill, hs }                  to the shooter: the server confirmed a hit
