@@ -28,7 +28,7 @@
 //   hurt     { x, z, hp }                  to the victim
 //   kill     { k, v, wk, hs, tk:[a,b], kk, vd, reward, streak }
 //   spawn    { x, y, z, yaw }              to the player who (re)spawns
-//   you      { hp, money, armor, boots, gloves, medkit, healT, primary, secondary, kills, deaths }  private state
+//   you      { hp, money, gear:{armor,helmet,boots,gloves,medkit,mag_*}, healT, primary, secondary, kills, deaths }  private state
 //   bought   { key }
 //   gone     { id }
 //   end      { tk, sc:[[id,kills,deaths],...] }

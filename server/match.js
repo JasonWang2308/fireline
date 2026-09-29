@@ -1,6 +1,6 @@
 // Server-authoritative match: bots, hit detection (with lag compensation), damage, economy, respawns.
 // Humans report their own movement (validated here); everything that decides who lives is decided here.
-import { W, GEAR, PRICE_MUL, START_MONEY, KILL_REWARD, STREAK_BONUS, MONEY_CAP, RESPAWN, SPAWN_PROT, HP_MAX, DIFF, STYLES, PREFS, SPAWNS, mir, inBuyZone } from '../shared/game-data.js';
+import { W, GEAR, magCap, headMul, PRICE_MUL, START_MONEY, KILL_REWARD, STREAK_BONUS, MONEY_CAP, RESPAWN, SPAWN_PROT, HP_MAX, DIFF, STYLES, PREFS, SPAWNS, mir, inBuyZone } from '../shared/game-data.js';
 import { createWorld, inWater, findPath, los, rayWorld, rayEntity, resolveWalls, physics, angDiff, turnTo, clamp, EYE_Y, CHEST_Y, HEAD_Y, PI } from '../shared/sim.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -41,7 +41,7 @@ export class Match {
   makeEnt(id, name, team, bot, style) {
     return {
       id, name, team, bot, pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, z: 0 }, vy: 0, onGround: true, yaw: 0, pitch: 0,
-      hp: HP_MAX, armor: false, boots: false, gloves: false, medkit: false, healT: 0, alive: false, respawnT: 0, spawnProt: 0,
+      hp: HP_MAX, healT: 0, alive: false, respawnT: 0, spawnProt: 0,
       money: START_MONEY, kills: 0, deaths: 0, streak: 0, primary: null, secondary: 'p9', slot: 2, ammo: {},
       reloadT: 0, reloadKey: null, fireCd: 0, swapT: 0, lastSlot: 1, burstLeft: 0, burstTarget: null,
       lastFireMs: 0, lastStateMs: 0, hist: [], lastShotT: -99,
@@ -54,7 +54,8 @@ export class Match {
   priceOf(k) { const base = GEAR[k] ? GEAR[k].price : W[k].price; return Math.round(base * (PRICE_MUL[this.len] || 1) / 50) * 50; }
   you(e) {
     if (e.bot) return;
-    this.emit('you', { hp: Math.max(0, Math.ceil(e.hp)), money: e.money, armor: e.armor, boots: e.boots, gloves: e.gloves, medkit: e.medkit, healT: r2(Math.max(0, e.healT)), primary: e.primary, secondary: e.secondary, kills: e.kills, deaths: e.deaths }, e.id);
+    const gear = {}; for (const g in GEAR) gear[g] = !!e[g];
+    this.emit('you', { hp: Math.max(0, Math.ceil(e.hp)), money: e.money, gear, healT: r2(Math.max(0, e.healT)), primary: e.primary, secondary: e.secondary, kills: e.kills, deaths: e.deaths }, e.id);
   }
   posAt(e, ms) {
     const h = e.hist;
@@ -79,7 +80,8 @@ export class Match {
     }
     Object.assign(e.pos, { x: best[0] + rand(-0.3, 0.3), y: 0, z: best[1] + rand(-0.3, 0.3) });
     e.vel.x = e.vel.z = 0; e.vy = 0; e.yaw = e.team === 0 ? -PI / 2 : PI / 2; e.pitch = 0;
-    Object.assign(e, { hp: HP_MAX, alive: true, armor: false, boots: false, gloves: false, medkit: false, healT: 0, primary: null, secondary: 'p9', melee: 'knife', dashReadyMs: 0, dashUntil: 0, slot: 2, lastSlot: 1, reloadT: 0, fireCd: 0, swapT: 0, burstLeft: 0, spawnProt: SPAWN_PROT });
+    for (const g in GEAR) e[g] = false;
+    Object.assign(e, { hp: HP_MAX, alive: true, healT: 0, primary: null, secondary: 'p9', melee: 'knife', dashReadyMs: 0, dashUntil: 0, slot: 2, lastSlot: 1, reloadT: 0, fireCd: 0, swapT: 0, burstLeft: 0, spawnProt: SPAWN_PROT });
     e.ammo = { p9: { mag: W.p9.mag, reserve: W.p9.reserve } };
     e.hist.length = 0;
     if (e.bot) {
@@ -95,14 +97,14 @@ export class Match {
   giveWeapon(e, k) {
     const w = W[k];
     if (w.slot === 3) { e.melee = k; e.slot = 3; e.reloadT = 0; e.swapT = 0.35; return; }
-    e.ammo[k] = { mag: w.mag, reserve: w.reserve };
+    e.ammo[k] = { mag: magCap(e, k), reserve: w.reserve };
     if (w.slot === 1) { e.primary = k; e.slot = 1; } else { e.secondary = k; e.slot = 2; }
     e.reloadT = 0; e.swapT = 0.35;
   }
   buy(e, key) {
     if (!e.alive || !inBuyZone(e) || !(W[key] || GEAR[key]) || key === 'knife' || key === 'p9') return false;
     const pr = this.priceOf(key);
-    if (GEAR[key]) { if (e[key] || e.money < pr) return false; e.money -= pr; e[key] = true; }
+    if (GEAR[key]) { if (e[key] || e.money < pr) return false; e.money -= pr; e[key] = true; if (GEAR[key].mag) for (const k in e.ammo) e.ammo[k].mag = Math.max(e.ammo[k].mag, magCap(e, k)); }
     else { if (e.money < pr || e.primary === key || e.secondary === key || e.melee === key) return false; e.money -= pr; this.giveWeapon(e, key); }
     if (!e.bot) { this.emit('bought', { key }, e.id); this.you(e); }
     return true;
@@ -112,7 +114,10 @@ export class Match {
     if (e.money >= this.priceOf('armor') && Math.random() < 0.7) this.buy(e, 'armor');
     if (e.money >= this.priceOf('gloves') && Math.random() < 0.45) this.buy(e, 'gloves');
     if (e.money >= this.priceOf('boots') && (e.ai.style === 'heavy' || Math.random() < 0.35)) this.buy(e, 'boots');
+    if (e.money >= this.priceOf('helmet') && Math.random() < 0.45) this.buy(e, 'helmet');
     if (e.money >= this.priceOf('medkit') && Math.random() < 0.35) this.buy(e, 'medkit');
+    const mc = e.primary && W[e.primary].magc;
+    if (mc && e.money >= this.priceOf('mag_' + mc) && Math.random() < 0.35) this.buy(e, 'mag_' + mc);
   }
   // field medkit: heals GEAR.medkit.heal over GEAR.medkit.time seconds; taking damage or firing cuts it short
   startHeal(e) {
@@ -131,7 +136,7 @@ export class Match {
   /* ---------------- combat ---------------- */
   startReload(e, k) {
     k = k || this.curW(e); const w = W[k], a = e.ammo[k];
-    if (!a || e.reloadT > 0 || a.mag >= w.mag || a.reserve <= 0) return false;
+    if (!a || e.reloadT > 0 || a.mag >= magCap(e, k) || a.reserve <= 0) return false;
     e.reloadT = w.reload; e.reloadKey = k; return true;
   }
   switchSlot(e, s) { if (s === 1 && !e.primary) return; if (e.slot === s) return; e.burstLeft = 0; e.lastSlot = e.slot; e.slot = s; e.reloadT = 0; e.swapT = 0.35; }
@@ -147,6 +152,8 @@ export class Match {
   damage(v, a, amt, wk, hs) {
     if (!v.alive || v.spawnProt > 0) return false;
     if (v.armor) amt *= 0.7;
+    // helmet: a headshot can't take a full-health target down in one hit
+    if (hs && v.helmet && v.hp >= HP_MAX && amt >= v.hp) amt = v.hp - 1;
     v.hp -= amt; v.healT = 0;
     if (v.bot) { v.ai.lastSeen = { ...a.pos }; v.ai.lastSeenT = this.t; v.ai.alertBy = a; v.ai.alertT = this.t; }
     else this.emit('hurt', { x: r2(a.pos.x), z: r2(a.pos.z), hp: Math.max(0, Math.ceil(v.hp)) }, v.id);
@@ -209,7 +216,7 @@ export class Match {
       let bestT = wallT, best = null, head = false;
       for (const { t, p } of targets) { const r = rayEntity(o, d, p); if (r.t < bestT) { bestT = r.t; best = t; head = r.head; } }
       if (ends.length < 3) ends.push([r2(o.x + d.x * Math.min(bestT, 200)), r2(o.y + d.y * Math.min(bestT, 200)), r2(o.z + d.z * Math.min(bestT, 200))]);
-      if (best) { const h = hits.get(best) || { d: 0, hs: false }; h.d += w.dmg * (head ? 2 : 1) * this.falloff(w, bestT); h.hs = h.hs || head; hits.set(best, h); }
+      if (best) { const h = hits.get(best) || { d: 0, hs: false }; h.d += w.dmg * (head ? headMul(best) : 1) * this.falloff(w, bestT); h.hs = h.hs || head; hits.set(best, h); }
     }
     this.emit('shot', { id: e.id, look: w.look, o: [r2(o.x), r2(o.y), r2(o.z)], e: ends }, undefined, e.id);
     this.alertNearby(e, w.silent ? 8 : 32);
@@ -271,7 +278,7 @@ export class Match {
     if (!tg.onGround) p *= 0.7;
     if (e.gloves) p *= 1.12;
     let total = 0, hs = false;
-    for (let i = 0; i < w.pellets; i++) if (Math.random() < clamp(p, 0.03, 0.92)) { const h = Math.random() < 0.12 * D.acc; hs = hs || h; total += w.dmg * (h ? 2 : 1) * this.falloff(w, dist); }
+    for (let i = 0; i < w.pellets; i++) if (Math.random() < clamp(p, 0.03, 0.92)) { const h = Math.random() < 0.12 * D.acc; hs = hs || h; total += w.dmg * (h ? headMul(tg) : 1) * this.falloff(w, dist); }
     const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw), rx = Math.cos(e.yaw), rz = -Math.sin(e.yaw);
     const m = [r2(e.pos.x + fx * 1.2 + rx * 0.15), r2(e.pos.y + 1.34), r2(e.pos.z + fz * 1.2 + rz * 0.15)];
     const end = [tg.pos.x, tg.pos.y + CHEST_Y, tg.pos.z];
@@ -351,7 +358,7 @@ export class Match {
       }
     } else {
       ai.seeT = 0;
-      const a = e.ammo[wk]; if (a && a.mag < W[wk].mag * 0.35) this.startReload(e);
+      const a = e.ammo[wk]; if (a && a.mag < magCap(e, wk) * 0.35) this.startReload(e);
       if (e.slot === 3) this.switchSlot(e, e.primary ? 1 : 2); else if (e.slot === 2 && e.primary && e.reloadT <= 0) this.switchSlot(e, 1);
       const hunting = ai.lastSeen && this.t - ai.lastSeenT < 6;
       let goal = null;
@@ -397,7 +404,7 @@ export class Match {
       if (e.alive) {
         e.fireCd -= dt; e.swapT -= dt; e.spawnProt = Math.max(0, e.spawnProt - dt);
         this.healStep(e, dt);
-        if (e.reloadT > 0) { e.reloadT -= dt; if (e.reloadT <= 0) { const a = e.ammo[e.reloadKey], w = W[e.reloadKey]; if (a) { const take = Math.min(w.mag - a.mag, a.reserve); a.mag += take; a.reserve -= take; } } }
+        if (e.reloadT > 0) { e.reloadT -= dt; if (e.reloadT <= 0) { const a = e.ammo[e.reloadKey]; if (a) { const take = Math.min(magCap(e, e.reloadKey) - a.mag, a.reserve); a.mag += take; a.reserve -= take; } } }
         if (!e.bot && inBuyZone(e)) for (const k in e.ammo) e.ammo[k].reserve = W[k].reserve;
         if (e.bot) this.updateBot(e, dt);
       } else {

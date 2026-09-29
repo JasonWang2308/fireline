@@ -38,23 +38,41 @@ const WDESC={
 };
 const GEAR={
   armor:{name:'戰術護甲',price:650,desc:'受到的所有傷害降低 30%，持續到死亡為止。'},
+  helmet:{name:'戰術頭盔',price:400,desc:'被爆頭的傷害倍率從 ×2 降為 ×1.3；滿血時被爆頭不會一槍倒地（至少留 1 HP）。身體中彈照常計算。死亡後消失。'},
   boots:{name:'輕量戰術靴',price:400,desc:'移動速度提高 12%，可以彌補重型武器的機動性。死亡後消失。'},
   gloves:{name:'穩定手甲',price:450,desc:'射擊後座力與連射擴散降低 40%，自動武器更好控。死亡後消失。'},
   medkit:{name:'戰地醫療針',price:500,heal:35,time:4,desc:'按 H 使用：4 秒內恢復 35 HP。注射時不能射擊、移動變慢，被擊中會中斷（已恢復的保留）。一次帶一支，死亡後消失。'},
 };
 // shorter matches get a cheaper shop so the full buy loop still fits
+// extended magazines: one per weapon class, bought once per life like the other gear
+const MAG_CLASS={
+  pistol:{name:'手槍擴充彈匣',price:200,mul:1.5},smg:{name:'衝鋒槍擴充彈匣',price:300,mul:1.5},shotgun:{name:'霰彈槍擴充彈匣',price:300,mul:1.5},
+  rifle:{name:'步槍擴充彈匣',price:350,mul:4/3},marksman:{name:'精準步槍擴充彈匣',price:400,mul:1.5},heavy:{name:'機槍擴充彈匣',price:500,mul:1.5},
+};
+const HELMET_HEAD=1.3;
 const PRICE_MUL={180:.5,300:.7,600:1};
 const START_MONEY=800, KILL_REWARD=300, STREAK_BONUS=100, MONEY_CAP=16000, RESPAWN=3, SPAWN_PROT=2, HP_MAX=100, TEAM_SIZE=5;
 const SHOP=[
-  {group:'手槍 PISTOL',items:['magnum','revolver','h9','dual']},
-  {group:'衝鋒槍 SMG',items:['smg','rapid','mp7']},
-  {group:'霰彈槍 SHOTGUN',items:['shotgun','autoshot']},
-  {group:'步槍 RIFLE',items:['carbine','burst','rifle','tactical']},
-  {group:'精準與栓動 MARKSMAN',items:['scout','battle','dmr','sniper']},
-  {group:'重型武器 HEAVY',items:['lmg','heavy']},
+  {group:'手槍 PISTOL',mc:'pistol',items:['magnum','revolver','h9','dual']},
+  {group:'衝鋒槍 SMG',mc:'smg',items:['smg','rapid','mp7']},
+  {group:'霰彈槍 SHOTGUN',mc:'shotgun',items:['shotgun','autoshot']},
+  {group:'步槍 RIFLE',mc:'rifle',items:['carbine','burst','rifle','tactical']},
+  {group:'精準與栓動 MARKSMAN',mc:'marksman',items:['scout','battle','dmr','sniper']},
+  {group:'重型武器 HEAVY',mc:'heavy',items:['lmg','heavy']},
   {group:'近戰 MELEE',items:['katana','axe']},
-  {group:'裝備 GEAR',items:['armor','boots','gloves','medkit']},
+  {group:'裝備 GEAR',items:['armor','helmet','boots','gloves','medkit']},
+  {group:'擴充彈匣 MAGAZINE',items:Object.keys(MAG_CLASS).map(c=>'mag_'+c)},
 ];
+W.p9.magc='pistol';
+const bigMag=(w,mul)=>{const b=w.burst||1;return Math.round(w.mag*mul/b)*b;};
+for(const g of SHOP)if(g.mc)for(const k of g.items)W[k].magc=g.mc;
+for(const c in MAG_CLASS){
+  const m=MAG_CLASS[c],ex=Object.keys(W).filter(k=>W[k].magc===c).slice(0,3).map(k=>`${W[k].name.split(' ')[0]} ${W[k].mag}→${bigMag(W[k],m.mul)}`).join('、');
+  GEAR['mag_'+c]={name:m.name,price:m.price,mag:c,mul:m.mul,desc:`${m.name.replace('擴充彈匣','')}類武器彈匣容量 +${Math.round((m.mul-1)*100)}%（${ex}）。買了之後再買同類的槍也有效。死亡後消失。`};
+}
+// magazine capacity for entity e holding weapon k (extended magazine applies per weapon class)
+function magCap(e,k){const w=W[k];if(!w||!w.mag)return 0;const g=w.magc&&e&&e['mag_'+w.magc]?GEAR['mag_'+w.magc]:null;return g?bigMag(w,g.mul):w.mag;}
+function headMul(v){return v&&v.helmet?HELMET_HEAD:2;}
 const DIFF={easy:{acc:.55,react:.8},std:{acc:.8,react:.5},hard:{acc:1.05,react:.3}};
 const NAMES=[['你','獵鷹','石牆','幽靈','烈風'],['毒蛇','鐵砧','野狼','雷霆','黑曜']];
 const STYLES=['rifle','sniper','rusher','shotgun','marksman','heavy','scout','smg','rifle','marksman'];
@@ -127,5 +145,5 @@ function rects(list){const out=[];(list||[]).forEach(r=>{out.push({minX:r[0],max
 function inRect(list,x,z){for(const r of list)if(x>r.minX&&x<r.maxX&&z>r.minZ&&z<r.maxZ)return true;return false;}
 
 
-export {W,WDESC,GEAR,PRICE_MUL,START_MONEY,KILL_REWARD,STREAK_BONUS,MONEY_CAP,RESPAWN,SPAWN_PROT,HP_MAX,TEAM_SIZE,SHOP,DIFF,NAMES,STYLES,PREFS,
+export {W,WDESC,GEAR,MAG_CLASS,HELMET_HEAD,magCap,headMul,PRICE_MUL,START_MONEY,KILL_REWARD,STREAK_BONUS,MONEY_CAP,RESPAWN,SPAWN_PROT,HP_MAX,TEAM_SIZE,SHOP,DIFF,NAMES,STYLES,PREFS,
   B,BZ,mir,SPAWNS,SPAWN_WALLS,MAPS,MAP_ORDER,mapSolids,rects,inRect};

@@ -1,5 +1,5 @@
 // 火線交鋒 FIRELINE — browser client
-import {W,WDESC,GEAR,PRICE_MUL,START_MONEY,KILL_REWARD,STREAK_BONUS,MONEY_CAP,RESPAWN,SPAWN_PROT,HP_MAX,TEAM_SIZE,SHOP,DIFF,NAMES,STYLES,PREFS,
+import {W,WDESC,GEAR,magCap,headMul,PRICE_MUL,START_MONEY,KILL_REWARD,STREAK_BONUS,MONEY_CAP,RESPAWN,SPAWN_PROT,HP_MAX,TEAM_SIZE,SHOP,DIFF,NAMES,STYLES,PREFS,
   B,BZ,mir,SPAWNS,SPAWN_WALLS,MAPS,MAP_ORDER,mapSolids,rects,inRect,inBuyZone} from '../shared/game-data.js';
 import {Net} from './net.js';
 import * as S from '../shared/sim.js';
@@ -338,13 +338,13 @@ function makeEnt(name,team,isPlayer,style,bot){
   if(!isPlayer)e.mesh=makeSoldier(e);
   return e;
 }
-function giveWeapon(e,k){const w=W[k];if(w.slot===3){e.melee=k;e.slot=3;}else{e.ammo[k]={mag:w.mag,reserve:w.reserve};if(w.slot===1){e.primary=k;e.slot=1;}else{e.secondary=k;e.slot=2;}}e.reloadT=0;e.swapT=.35;
+function giveWeapon(e,k){const w=W[k];if(w.slot===3){e.melee=k;e.slot=3;}else{e.ammo[k]={mag:magCap(e,k),reserve:w.reserve};if(w.slot===1){e.primary=k;e.slot=1;}else{e.secondary=k;e.slot=2;}}e.reloadT=0;e.swapT=.35;
   if(e.isPlayer)buildViewmodel();else setSoldierGun(e);}
 function buy(e,key){
   if(!inBuyZone(e)||!e.alive)return false;
   if(online&&e===P){online.net.send('buy',{key});return false;}
   const pr=priceOf(key);
-  if(GEAR[key]){if(e[key]||e.money<pr)return false;e.money-=pr;e[key]=true;return true;}
+  if(GEAR[key]){if(e[key]||e.money<pr)return false;e.money-=pr;e[key]=true;if(GEAR[key].mag)for(const k in e.ammo)e.ammo[k].mag=Math.max(e.ammo[k].mag,magCap(e,k));return true;}
   if(e.money<pr)return false;if(e.primary===key||e.secondary===key)return false;
   if(e.melee===key)return false;
   e.money-=pr;giveWeapon(e,key);return true;
@@ -354,7 +354,9 @@ function botBuy(e){
   if(e.money>=priceOf('armor')&&Math.random()<.7)buy(e,'armor');
   if(e.money>=priceOf('gloves')&&Math.random()<.45)buy(e,'gloves');
   if(e.money>=priceOf('boots')&&(e.ai.style==='heavy'||Math.random()<.35))buy(e,'boots');
+  if(e.money>=priceOf('helmet')&&Math.random()<.45)buy(e,'helmet');
   if(e.money>=priceOf('medkit')&&Math.random()<.35)buy(e,'medkit');
+  const mc=e.primary&&W[e.primary].magc;if(mc&&e.money>=priceOf('mag_'+mc)&&Math.random()<.35)buy(e,'mag_'+mc);
 }
 // field medkit: heals GEAR.medkit.heal over GEAR.medkit.time seconds; damage or firing cuts it short
 function startHeal(e){
@@ -371,7 +373,7 @@ function spawn(e){
     let occ=0;for(const o of ents)if(o!==e&&o.alive&&Math.hypot(o.pos.x-p[0],o.pos.z-p[1])<1.2)occ=1;
     const sc=md+Math.random()*4-(occ?50:0);if(sc>bs){bs=sc;best=p;}}
   e.pos.set(best[0]+rand(-.3,.3),0,best[1]+rand(-.3,.3));e.vel.set(0,0,0);e.vy=0;e.yaw=e.team===0?-PI/2:PI/2;e.pitch=0;
-  e.hp=HP_MAX;e.alive=true;e.armor=false;e.boots=false;e.gloves=false;e.medkit=false;e.healT=0;e.lastSlot=1;e.primary=null;e.secondary='p9';e.melee='knife';e.dashCd=0;e.dashT=0;e.chargeT=0;e.slot=2;e.ammo={p9:{mag:W.p9.mag,reserve:W.p9.reserve}};
+  for(const g in GEAR)e[g]=false;e.hp=HP_MAX;e.alive=true;e.healT=0;e.lastSlot=1;e.primary=null;e.secondary='p9';e.melee='knife';e.dashCd=0;e.dashT=0;e.chargeT=0;e.slot=2;e.ammo={p9:{mag:W.p9.mag,reserve:W.p9.reserve}};
   e.reloadT=0;e.fireCd=0;e.swapT=0;e.bloom=0;e.spawnProt=SPAWN_PROT;e.deadT=0;
   if(e.isPlayer){buildViewmodel();}
   else{const a=e.ai;a.path=null;a.goal=null;a.route=[];a.target=null;a.lastSeen=null;a.stuckT=0;a.lastX=e.pos.x;a.lastZ=e.pos.z;
@@ -391,7 +393,7 @@ function separate(){
 const eyeOf=(e,v)=>(v||new THREE.Vector3()).set(e.pos.x,e.pos.y+1.58,e.pos.z);
 const chestOf=(e,v)=>(v||new THREE.Vector3()).set(e.pos.x,e.pos.y+1.2,e.pos.z);
 const headOf=(e,v)=>(v||new THREE.Vector3()).set(e.pos.x,e.pos.y+1.66,e.pos.z);
-function startReload(e){const k=curW(e),w=W[k],a=e.ammo[k];if(!a||e.reloadT>0||a.mag>=w.mag||a.reserve<=0)return false;e.reloadT=w.reload;e.reloadKey=k;if(online&&e===P)online.net.send('reload',{wk:k});return true;}
+function startReload(e){const k=curW(e),w=W[k],a=e.ammo[k];if(!a||e.reloadT>0||a.mag>=magCap(e,k)||a.reserve<=0)return false;e.reloadT=w.reload;e.reloadKey=k;if(online&&e===P)online.net.send('reload',{wk:k});return true;}
 function switchSlot(e,s){if(s===1&&!e.primary)return;if(e.slot===s)return;e.burstLeft=0;e.lastSlot=e.slot;e.slot=s;e.reloadT=0;e.swapT=.35;if(e.isPlayer){buildViewmodel();}else setSoldierGun(e);}
 function cycleSlot(e,dir){const order=[1,2,3].filter(s=>s!==1||e.primary);let i=order.indexOf(e.slot);if(i<0)i=0;switchSlot(e,order[(i+dir+order.length)%order.length]);}
 function hasAmmo(e,slot){const k=slot===1?e.primary:e.secondary;const a=k&&e.ammo[k];return !!a&&(a.mag>0||a.reserve>0);}
@@ -399,7 +401,7 @@ function isBehind(a,v){const fx=-Math.sin(v.yaw),fz=-Math.cos(v.yaw),dx=v.pos.x-
 function weaponTimers(e,dt){
   if(e.healT>0){const step=Math.min(dt,e.healT);e.healT-=dt;e.hp=Math.min(HP_MAX,e.hp+GEAR.medkit.heal*step/GEAR.medkit.time);if(e.healT<=0||e.hp>=HP_MAX)e.healT=0;}
   e.fireCd-=dt;e.swapT-=dt;e.bloom=Math.max(0,e.bloom-dt*.12);
-  if(e.reloadT>0){e.reloadT-=dt;if(e.reloadT<=0){const k=e.reloadKey,a=e.ammo[k],w=W[k];if(a){const need=w.mag-a.mag,take=Math.min(need,a.reserve);a.mag+=take;a.reserve-=take;}}}
+  if(e.reloadT>0){e.reloadT-=dt;if(e.reloadT<=0){const k=e.reloadKey,a=e.ammo[k];if(a){const need=magCap(e,k)-a.mag,take=Math.min(need,a.reserve);a.mag+=take;a.reserve-=take;}}}
 }
 let gameTime=0;
 function alertNearby(shooter,rad){rad=rad||32;
@@ -409,6 +411,7 @@ function falloff(w,d){return d<=w.range?1:Math.max(.45,1-(d-w.range)/(w.range*1.
 function damage(v,a,amt,wk,hs){
   if(!v.alive||v.spawnProt>0)return false;
   if(v.armor)amt*=.7;
+  if(hs&&v.helmet&&v.hp>=HP_MAX&&amt>=v.hp)amt=v.hp-1;  // helmet: no one-hit headshot kill from full health
   v.hp-=amt;v.healT=0;
   if(!v.isPlayer){v.ai.lastSeen=a.pos.clone();v.ai.lastSeenT=gameTime;v.ai.alertBy=a;v.ai.alertT=gameTime;}
   else{hurtFx(a);}
@@ -432,7 +435,7 @@ function botFire(e,tg,dist){
   if(Math.hypot(tg.vel.x,tg.vel.z)>2)p*=.78;if(Math.hypot(e.vel.x,e.vel.z)>1)p*=.82;p*=Math.min(1,.5+ai.seeT*.6);
   if(!tg.onGround)p*=.7;if(e.gloves)p*=1.12;
   let total=0,hs=false;
-  for(let i=0;i<w.pellets;i++){if(Math.random()<clamp(p,.03,.92)){const h=Math.random()<.12*D.acc;hs=hs||h;total+=w.dmg*(h?2:1)*falloff(w,dist);}}
+  for(let i=0;i<w.pellets;i++){if(Math.random()<clamp(p,.03,.92)){const h=Math.random()<.12*D.acc;hs=hs||h;total+=w.dmg*(h?headMul(tg):1)*falloff(w,dist);}}
   const fwd=new THREE.Vector3(-Math.sin(e.yaw),0,-Math.cos(e.yaw)),rt=new THREE.Vector3(Math.cos(e.yaw),0,-Math.sin(e.yaw));
   const m=new THREE.Vector3(e.pos.x,e.pos.y+1.34,e.pos.z).addScaledVector(fwd,.4+(-e.mesh.tip||.3)*1.25).addScaledVector(rt,.15);
   const end=chestOf(tg);if(total<=0){end.x+=rand(-1.2,1.2);end.y+=rand(-.4,.9);end.z+=rand(-1.2,1.2);}
@@ -462,7 +465,7 @@ function playerFire(){
       const tb=rayCapsule(_eye,_dir,o.pos.x,o.pos.y+.25,o.pos.y+1.38,o.pos.z,.33);if(tb<bestT){bestT=tb;bestE=o;bestH=false;}}
     const end=_b.copy(_eye).addScaledVector(_dir,Math.min(bestT,200));
     if(i<3){const m=new THREE.Vector3().copy(_eye).addScaledVector(_rt,.18).addScaledVector(_up,-.14).addScaledVector(_fw,.55);addTracer(m,end.clone());}
-    if(bestE){const d=bestT;const dmg=w.dmg*(bestH?2:1)*falloff(w,d);const h=hits.get(bestE)||{d:0,hs:false};h.d+=dmg;h.hs=h.hs||bestH;hits.set(bestE,h);addPuff(end.clone(),true);}
+    if(bestE){const d=bestT;const dmg=w.dmg*(bestH?headMul(bestE):1)*falloff(w,d);const h=hits.get(bestE)||{d:0,hs:false};h.d+=dmg;h.hs=h.hs||bestH;hits.set(bestE,h);addPuff(end.clone(),true);}
     else if(wallT<200&&i<4)addPuff(end.clone(),false);
   }
   let killed=false;
@@ -568,7 +571,7 @@ function updateBot(e,dt){
     }
   }else{
     ai.seeT=0;
-    const a=e.ammo[wk];if(a&&a.mag<W[wk].mag*.35)startReload(e);
+    const a=e.ammo[wk];if(a&&a.mag<magCap(e,wk)*.35)startReload(e);
     if(e.slot===3)switchSlot(e,e.primary?1:2);else if(e.slot===2&&e.primary&&e.reloadT<=0)switchSlot(e,1);
     const hunting=ai.lastSeen&&gameTime-ai.lastSeenT<6;
     let goal;
@@ -700,7 +703,8 @@ function updateHud(){
   const e=P,k=curW(e),w=W[k],a=e.ammo[k]||{mag:0,reserve:0};
   setText('hpNum',String(Math.max(0,Math.ceil(e.hp))));
   const f=$('hpFill');f.style.transform=`scaleX(${Math.max(0,e.hp)/HP_MAX})`;f.classList.toggle('low',e.hp<35);
-  $('armorChip').hidden=!e.armor||!e.alive;$('bootsChip').hidden=!e.boots||!e.alive;$('glovesChip').hidden=!e.gloves||!e.alive;$('medkitChip').hidden=!e.medkit||!e.alive;$('protChip').hidden=!(e.spawnProt>0&&e.alive);
+  $('armorChip').hidden=!e.armor||!e.alive;$('bootsChip').hidden=!e.boots||!e.alive;$('glovesChip').hidden=!e.gloves||!e.alive;$('medkitChip').hidden=!e.medkit||!e.alive;$('helmetChip').hidden=!e.helmet||!e.alive;
+  {const mg=Object.keys(GEAR).filter(g=>GEAR[g].mag&&e[g]).map(g=>GEAR[g].name.replace('擴充彈匣',''));setText('magChip','擴充彈匣：'+mg.join('、'));$('magChip').hidden=!mg.length||!e.alive;}$('protChip').hidden=!(e.spawnProt>0&&e.alive);
   setText('moneyNum',fmtMoney(e.money));
   let area='';if(e.alive)for(const a of MAP.areas){if(Math.hypot(e.pos.x-a.x,e.pos.z-a.z)<7.5||Math.hypot(e.pos.x+a.x,e.pos.z+a.z)<7.5){area=a.n+' '+a.name+'（'+a.sub+'）';break;}}
   setText('areaTag',area||MAP.name);
@@ -775,7 +779,9 @@ const SIL={
   heavy:[[6,12,22,11],[28,9,46,15],[74,14,24,5],[40,24,16,12],[80,19,4,9]],
 };
 const GEAR_SVG={armor:'M36 4h8l6 6 6-6h8l6 8v24H30V12z',boots:'M34 4h16v18l18 5c4 1 6 4 6 8v2H34z',gloves:'M36 37V17l3-11 4 1-1 10 3-13 4 1-2 13 4-12 4 1-3 13 4-8 4 2-6 16v7z',medkit:'M30 16h34v8H30zM64 18h10v4H64zM74 19.3h14v1.4H74zM22 12h4v16h-4zM26 18h4v4h-4zM38 12h3v4h-3zM48 12h3v4h-3z'};
-function silSVG(look){if(GEAR_SVG[look])return `<svg viewBox="0 0 100 40" aria-hidden="true"><path d="${GEAR_SVG[look]}"/></svg>`;return `<svg viewBox="0 0 100 40" aria-hidden="true">${SIL[look].map(r=>`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}"/>`).join('')}</svg>`;}
+GEAR_SVG.helmet='M30 30c0-14 9-24 20-24s20 10 20 24h6v5H24v-5z';
+const MAG_SVG='M42 4h16l-2 32H44zM46 9h8v3h-8zM46 15h8v3h-8zM46 21h8v3h-8z';
+function silSVG(look){if(/^mag_/.test(look))return `<svg viewBox="0 0 100 40" aria-hidden="true"><path fill-rule="evenodd" d="${MAG_SVG}"/></svg>`;if(GEAR_SVG[look])return `<svg viewBox="0 0 100 40" aria-hidden="true"><path d="${GEAR_SVG[look]}"/></svg>`;return `<svg viewBox="0 0 100 40" aria-hidden="true">${SIL[look].map(r=>`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}"/>`).join('')}</svg>`;}
 let buySel='rifle';
 function itemInfo(k){if(GEAR[k])return{name:GEAR[k].name,cls:'裝備',price:priceOf(k),look:k};return Object.assign({},W[k],{price:priceOf(k)});}
 function owned(k){return GEAR[k]?!!P[k]:(P.primary===k||P.secondary===k||P.melee===k);}
@@ -783,11 +789,11 @@ function statsHTML(k){
   if(GEAR[k])return `<p>${GEAR[k].desc}</p>`;
   const w=W[k];let rows;
   if(w.melee)rows=[['傷害',w.dmg/130,w.dmg+'（背刺 110）'],['攻擊速度',w.rpm/900,w.rpm+' 次/分'],['距離',w.range/90,w.range+' m'],['移動速度',(w.speed-.6)/.4,Math.round(w.speed*100)+'%']];
-  else rows=[['傷害',w.dmg*w.pellets/130,w.pellets>1?`${w.dmg}×${w.pellets}`:w.dmg],['射速',Math.min(1,w.rpm/900),w.burst?`${w.burst} 連發`:w.rpm+' rpm'],['彈匣',w.mag/100,w.mag+' / '+w.reserve],['裝填速度',(5.2-w.reload)/4.5,w.reload+' s'],['後座力',w.recoil/1.6,w.recoil.toFixed(2)],['射程',w.range/90,w.range+' m'],['精準度',1-(w.scope?w.scopeSpread:w.spread)/.1,Math.round((1-(w.scope?w.scopeSpread:w.spread)/.1)*100)+(w.scope?'（開鏡）':'')],['移動速度',(w.speed-.6)/.4,Math.round(w.speed*100)+'%']];
+  else rows=[['傷害',w.dmg*w.pellets/130,w.pellets>1?`${w.dmg}×${w.pellets}`:w.dmg],['射速',Math.min(1,w.rpm/900),w.burst?`${w.burst} 連發`:w.rpm+' rpm'],['彈匣',w.mag/100,(P&&magCap(P,k)>w.mag?`${w.mag}（擴充 ${magCap(P,k)}）`:w.mag)+' / '+w.reserve],['裝填速度',(5.2-w.reload)/4.5,w.reload+' s'],['後座力',w.recoil/1.6,w.recoil.toFixed(2)],['射程',w.range/90,w.range+' m'],['精準度',1-(w.scope?w.scopeSpread:w.spread)/.1,Math.round((1-(w.scope?w.scopeSpread:w.spread)/.1)*100)+(w.scope?'（開鏡）':'')],['移動速度',(w.speed-.6)/.4,Math.round(w.speed*100)+'%']];
   const tags=w.tags?`<div class="tags">${w.tags.map(t=>`<span>${t}</span>`).join('')}</div>`:'';
   return tags+`<div class="stats">${rows.map(r=>`<span>${r[0]}</span><i style="--v:${Math.round(clamp(r[1],.04,1)*100)}%"></i><em>${r[2]}</em>`).join('')}</div>`;
 }
-const ARMORY=[{sec:'預設配備 DEFAULT',items:['p9','knife']},...SHOP.map(g=>({sec:g.group+(g.group.startsWith('裝備')?' · 死亡後消失':''),items:g.items}))];
+const ARMORY=[{sec:'預設配備 DEFAULT',items:['p9','knife']},...SHOP.map(g=>({sec:g.group+((g.group.startsWith('裝備')||g.group.startsWith('擴充'))?' · 死亡後消失':''),items:g.items}))];
 function renderArmory(){
   const slotName={1:'主武器 · 按 1',2:'手槍 · 按 2',3:'近戰 · 按 3'};
   $('armNote').textContent=priceLabel();
@@ -1053,8 +1059,8 @@ async function ensureNet(){
   net.on('end',m=>{if(state!=='play')return;if(m.tk)teamKills=m.tk;if(m.sc)for(const [id,k,d] of m.sc){const e=entById(id);if(e){e.kills=k;e.deaths=d;}}endMatch();});
   net.on('spawn',m=>{if(state!=='play')return;spawn(P);P.pos.set(m.x,m.y,m.z);P.yaw=m.yaw;P.pitch=0;$('deathScr').hidden=true;
     if(!locked&&!noLock&&!isTouch&&everLocked&&!paused&&!buyOpen)setPause(true);});
-  net.on('you',m=>{Object.assign(P,{hp:m.hp,money:m.money,armor:m.armor,boots:m.boots,gloves:m.gloves,medkit:!!m.medkit,healT:m.healT||0,kills:m.kills,deaths:m.deaths});if(buyOpen)renderBuy();});
-  net.on('bought',m=>{if(GEAR[m.key])P[m.key]=true;else if(W[m.key])giveWeapon(P,m.key);sfxTone([660,990],.1,.12,'triangle');if(buyOpen)renderBuy();});
+  net.on('you',m=>{Object.assign(P,{hp:m.hp,money:m.money,healT:m.healT||0,kills:m.kills,deaths:m.deaths});for(const g in GEAR)P[g]=!!(m.gear&&m.gear[g]);if(buyOpen)renderBuy();});
+  net.on('bought',m=>{if(GEAR[m.key]){P[m.key]=true;if(GEAR[m.key].mag)for(const k in P.ammo)P.ammo[k].mag=Math.max(P.ammo[k].mag,magCap(P,k));}else if(W[m.key])giveWeapon(P,m.key);sfxTone([660,990],.1,.12,'triangle');if(buyOpen)renderBuy();});
   net.on('hurt',m=>{if(state!=='play')return;P.hp=m.hp;P.healT=0;hurtFx({pos:{x:m.x,z:m.z}});});
   net.on('hit',m=>{hitMark(m.kill);if(!m.kill)sfxTone([1400],.05,.08,'square');});
   net.on('kill',onlineKill);

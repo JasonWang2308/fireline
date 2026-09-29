@@ -20,7 +20,7 @@ const server = http.createServer(async (req, res) => {
   catch { res.writeHead(400); res.end('bad request'); return; }
   if (url === '/healthz') { res.writeHead(200); res.end('ok'); return; }
   // the page uses relative paths so it also works from a sub-folder (e.g. GitHub Pages)
-  if (url === '/' || url === '/index.html') { res.writeHead(302, { Location: '/client/' }); res.end(); return; }
+  if (url === '/' || url === '/index.html') { res.writeHead(302, { Location: '/client/' + new URL(req.url, 'http://localhost').search }); res.end(); return; }
   if (url === '/client' || url === '/client/') url = '/client/index.html';
   if (!url.startsWith('/client/') && !url.startsWith('/shared/')) { res.writeHead(404); res.end('not found'); return; }
   const file = path.normalize(path.join(ROOT, url));
