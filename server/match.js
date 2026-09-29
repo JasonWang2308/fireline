@@ -1,6 +1,6 @@
 // Server-authoritative match: bots, hit detection (with lag compensation), damage, economy, respawns.
 // Humans report their own movement (validated here); everything that decides who lives is decided here.
-import { W, GEAR, magCap, headMul, PRICE_MUL, START_MONEY, KILL_REWARD, STREAK_BONUS, MONEY_CAP, RESPAWN, SPAWN_PROT, HP_MAX, DIFF, STYLES, PREFS, SPAWNS, mir, inBuyZone } from '../shared/game-data.js';
+import { W, GEAR, magCap, headMul, PRICE_MUL, START_MONEY, KILL_REWARD, STREAK_BONUS, MONEY_CAP, RESPAWN, SPAWN_PROT, HP_MAX, DIFF, STYLES, PREFS, SPAWNS, mir, mirOf, inBuyZone } from '../shared/game-data.js';
 import { createWorld, inWater, findPath, los, rayWorld, rayEntity, resolveWalls, physics, angDiff, turnTo, clamp, EYE_Y, CHEST_Y, HEAD_Y, PI } from '../shared/sim.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -311,8 +311,8 @@ export class Match {
     const ai = e.ai;
     if (!ai.route.length) {
       const pk = (a) => a[(Math.random() * a.length) | 0];
-      let pts = [pk(this.def.poi), pk(this.def.cpoi), mir(pk(this.def.poi))];
-      if (e.team === 1) pts = pts.map(mir);
+      const mm = mirOf(this.def); let pts = this.def.lanes ? [...pk(this.def.lanes), pk(this.def.cpoi)] : [pk(this.def.poi), pk(this.def.cpoi), mm(pk(this.def.poi))];
+      if (e.team === 1) pts = pts.map(mm);
       ai.route = pts.map((p) => ({ x: p[0] + rand(-1, 1), z: p[1] + rand(-1, 1) }));
     }
     return ai.route.shift();

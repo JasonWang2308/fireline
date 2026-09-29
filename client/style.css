@@ -215,7 +215,7 @@ input[type=range]{accent-color:var(--coin);width:180px}
 /* crosshair settings */
 .mapsel{display:flex;flex-direction:column;gap:8px}
 .mapsel-h{font-size:13px;color:var(--muted)}
-.maps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.maps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .mapc{background:rgba(10,17,24,.7);border:1px solid var(--line);padding:6px;display:flex;flex-direction:column;gap:5px;text-align:left;border-top:3px solid var(--acc)}
 .mapc canvas{width:100%;height:auto;display:block}
 .mapc .mt{display:flex;justify-content:space-between;align-items:baseline;gap:4px}

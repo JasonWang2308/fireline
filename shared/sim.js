@@ -8,9 +8,12 @@ export function angDiff(a, b) { let d = b - a; while (d > PI) d -= 2 * PI; while
 export function turnTo(a, b, max) { const d = angDiff(a, b); return a + clamp(d, -max, max); }
 
 /* ---------------- world ---------------- */
+// surfaces you can stand on (stairs, raised decks); anything at most STEP higher than your feet is walked up onto
+export const WALKABLE = { stair: 1, deck: 1 };
+export const STEP = 0.5;
 export function createWorld(mapId) {
   const def = MAPS[mapId];
-  const w = { id: mapId, def, solids: mapSolids(def), waters: rects(def.water), bridges: rects(def.bridge), blocked: new Uint8Array(N), watC: new Uint8Array(N) };
+  const w = { id: mapId, def, solids: mapSolids(def), waters: rects(def.water), bridges: rects(def.bridge), blocked: new Uint8Array(N), watC: new Uint8Array(N), hgt: new Float32Array(N) };
   buildNav(w);
   return w;
 }
@@ -25,9 +28,12 @@ function buildNav(w) {
   const pad = 0.45;
   for (let iz = 0; iz < NZ; iz++) for (let ix = 0; ix < NX; ix++) {
     const x = B.minX + ix + 0.5, z = B.minZ + iz + 0.5;
-    let bl = 0;
-    for (const s of w.solids) if (x > s.minX - pad && x < s.maxX + pad && z > s.minZ - pad && z < s.maxZ + pad) { bl = 1; break; }
-    w.blocked[idx(ix, iz)] = bl;
+    let bl = 0, h = 0;
+    for (const s of w.solids) {
+      if (WALKABLE[s.kind]) { if (x > s.minX && x < s.maxX && z > s.minZ && z < s.maxZ && s.maxY > h) h = s.maxY; continue; }
+      if (x > s.minX - pad && x < s.maxX + pad && z > s.minZ - pad && z < s.maxZ + pad) { bl = 1; break; }
+    }
+    w.blocked[idx(ix, iz)] = bl; w.hgt[idx(ix, iz)] = h;
     w.watC[idx(ix, iz)] = inWater(w, x, z) ? 1 : 0;
   }
 }
@@ -54,7 +60,7 @@ function hPop() {
 }
 function heur(a, b) { const dx = Math.abs(a % NX - b % NX), dz = Math.abs(((a / NX) | 0) - ((b / NX) | 0)); return dx + dz + (1.414 - 2) * Math.min(dx, dz); }
 export function astar(w, s, g) {
-  const blocked = w.blocked, watC = w.watC;
+  const blocked = w.blocked, watC = w.watC, hgt = w.hgt;
   gen++; hN.length = 0; hF.length = 0; gS[s] = 0; stamp[s] = gen; came[s] = -1; hPush(s, heur(s, g));
   let it = 0;
   while (hN.length && it++ < 14000) {
@@ -64,7 +70,8 @@ export function astar(w, s, g) {
       if (!dx && !dz) continue;
       const nx = cx + dx, nz = cz + dz; if (nx < 0 || nz < 0 || nx >= NX || nz >= NZ) continue;
       const ni = idx(nx, nz); if (blocked[ni]) continue;
-      if (dx && dz && (blocked[idx(cx + dx, cz)] || blocked[idx(cx, cz + dz)])) continue;
+      if (hgt[ni] - hgt[c] > STEP + 0.01) continue;   // can step up a stair, never climb a deck's side (dropping down is fine)
+      if (dx && dz && (blocked[idx(cx + dx, cz)] || blocked[idx(cx, cz + dz)] || hgt[idx(cx + dx, cz)] !== hgt[c] || hgt[idx(cx, cz + dz)] !== hgt[c])) continue;
       const ng = gS[c] + (dx && dz ? 1.414 : 1) + (watC[ni] ? 1.6 : 0);
       if (stamp[ni] !== gen || ng < gS[ni]) { stamp[ni] = gen; gS[ni] = ng; came[ni] = c; hPush(ni, ng + heur(ni, g)); }
     }
@@ -75,7 +82,12 @@ export function astar(w, s, g) {
 }
 export function lineWalkable(w, ax, az, bx, bz) {
   const d = Math.hypot(bx - ax, bz - az), n = Math.ceil(d / 0.3);
-  for (let i = 1; i <= n; i++) { const t = i / n; if (blockedAt(w, ax + (bx - ax) * t, az + (bz - az) * t)) return false; }
+  let ph = w.hgt[idx(cellX(ax), cellZ(az))];
+  for (let i = 1; i <= n; i++) {
+    const t = i / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+    if (blockedAt(w, x, z)) return false;
+    const h = w.hgt[idx(cellX(x), cellZ(z))]; if (h !== ph) return false;   // keep height changes on the grid path (stairs)
+  }
   return true;
 }
 export function findPath(w, from, to) {
@@ -140,7 +152,7 @@ export function rayEntity(o, d, p) {
 export const R_ENT = 0.38;
 export function resolveWalls(w, e) {
   for (const b of w.solids) {
-    if (e.pos.y >= b.maxY - 0.05) continue;
+    if (e.pos.y + STEP >= b.maxY) continue;   // low enough to step onto
     const nx = clamp(e.pos.x, b.minX, b.maxX), nz = clamp(e.pos.z, b.minZ, b.maxZ);
     const dx = e.pos.x - nx, dz = e.pos.z - nz, d2 = dx * dx + dz * dz;
     if (d2 >= R_ENT * R_ENT) continue;
@@ -155,7 +167,7 @@ export function resolveWalls(w, e) {
 }
 export function groundAt(w, x, z, y) {
   let g = 0; const r = 0.25;
-  for (const b of w.solids) { if (b.maxY > y + 0.06) continue; if (x + r > b.minX && x - r < b.maxX && z + r > b.minZ && z - r < b.maxZ && b.maxY > g) g = b.maxY; }
+  for (const b of w.solids) { if (b.maxY > y + STEP) continue; if (x + r > b.minX && x - r < b.maxX && z + r > b.minZ && z - r < b.maxZ && b.maxY > g) g = b.maxY; }
   return g;
 }
 export function physics(w, e, dt) {

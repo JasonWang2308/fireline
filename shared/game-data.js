@@ -132,10 +132,50 @@ const MAPS={
     poi:[[-21,-14],[-8,-14],[-16,-2],[-20,12],[-8,12],[-14.5,20],[-3,20]],cpoi:[[0,-15],[0,15],[-5,-3]],
     areas:[{n:1,name:'中央廣場',sub:'開放區域',x:0,z:0},{n:2,name:'研究所',sub:'室內',x:-21,z:-15},{n:3,name:'停機坪',sub:'狙擊點',x:-16,z:-2},{n:4,name:'倉庫',sub:'掩體多',x:-8,z:12.5}]},
 };
-const MAP_ORDER=['desert','indoor','jungle','snow'];
+// PORT uses left-right mirror symmetry (x -> -x) instead of point symmetry, so every lane is the same kind of lane for both teams:
+// north = long quay, middle = container yard, south = close-quarters warehouse aisles.
+MAPS.port={name:'貨櫃港口',en:'PORT',accent:'#ff8a3d',sym:'x',desc:'北側長碼頭、中央貨櫃場、南側倉庫走道，三種距離各一條路，另有兩條側翼與高台。',
+  west:[
+    // sea along the north edge (blocks movement, not shots)
+    [-20.5,-27.3,41,3.4,.6,'sea'],
+    // Route A: quay (long range) with bollards, crates and gantry crane legs
+    [-27,-24.9,.7,.7,.8,'bollard'],[-19,-24.9,.7,.7,.8,'bollard'],[-11,-24.9,.7,.7,.8,'bollard'],[-3,-24.9,.7,.7,.8,'bollard'],
+    [-23,-21,1.4,1.4,1.1,'crate'],[-14.5,-23,2.4,1.4,1.1,'crate'],[-6.5,-20.4,1.5,1.5,1.1,'crate'],
+    [-9,-24.6,1,1,7,'pillar'],[-9,-19.2,1,1,7,'pillar'],
+    // quay / service-road divider: container, unloading deck with stairs, container
+    [-27,-17,6,2.4,2.7,'container'],
+    [-21.4,-17,1.2,3,.45,'stair'],[-20.2,-17,1.2,3,.9,'stair'],[-19,-17,1.2,3,1.35,'stair'],[-15.1,-17,6.6,3,1.8,'deck'],[-11.6,-17,.4,3,2.8,'parapet'],
+    [-5,-17,5,2.4,2.7,'container'],
+    // Flank A: service road
+    [-25,-12.8,2.2,1.4,1.6,'machine'],[-17,-11.3,1.4,1.4,1.1,'crate'],[-9,-12.8,.6,3,1.2,'low'],
+    // north-west corner by the spawn
+    [-36,-14,2.4,5,2.7,'container'],[-33,-21,1.4,1.4,1.1,'crate'],[-38.5,-22.5,2.4,1.4,1.1,'crate'],
+    // Route B: container yard lane (mid range)
+    [-26,-3.5,1.4,1.4,1.1,'crate'],[-23,2.8,2.4,3.6,2.7,'container'],[-26.5,5.5,.6,2.4,1.2,'low'],[-19,-6.5,2.4,5,2.7,'container'],[-14.5,1.8,5,2.4,2.7,'container'],[-11,-2.6,1.4,1.4,1.1,'crate'],
+    // central yard (west half)
+    [-6,-6.5,5,2.4,2.7,'container'],[-4.6,3.2,1.4,1.4,1.1,'crate'],
+    [-4.2,7.5,1.2,3,.45,'stair'],[-3,7.5,1.2,3,.9,'stair'],
+    // Route C: warehouse aisles (close range) between two warehouses
+    [-20,12.6,16,3,5,'bldg'],[-20,23.2,16,4.4,5,'bldg'],
+    [-24,17.8,5,1,3.4,'rack'],[-16,16,1,3.8,3.4,'rack'],[-13.6,19.6,2.4,1.4,1.1,'crate'],
+    // south-west corner and south yard
+    [-36,15,2.4,5,2.7,'container'],[-34,24,5,2.4,2.7,'container'],[-38.5,20,1.4,1.4,1.1,'crate'],
+    [-7,14,2.4,5,2.7,'container'],[-3,18.4,1.4,1.4,1.1,'crate'],[-9.5,24,1.4,1.4,1.1,'crate'],
+  ],
+  center:[[0,0,2.4,6,5.4,'container'],[0,7.5,4.8,3,1.35,'deck'],[0,-22,3,1.2,1.2,'low'],[0,24,6,6,4,'bldg']],
+  cranes:[[-9,-24.6,-19.2]],
+  poi:[[-24,-22],[-12,-22],[-24,-12.8],[-13,-13.5],[-15,-17],[-22,0],[-12,-1],[-24,15.6],[-24,20],[-13,17],[-20,27.3],[-9,20],[-35,-19],[-35,19]],
+  cpoi:[[0,-4.8],[0,4.5],[0,7.5],[0,-12.5],[0,-21],[0,18.5]],
+  // bots pick one route per life (west-half waypoints, walked in order) and then head for the centre
+  lanes:[[[-30,-21],[-18,-22],[-6,-22]],[[-23,-17],[-15,-17]],[[-26,-13],[-14,-13],[-4,-12.5]],[[-24,-1],[-12,-1]],[[-27,17.6],[-20,15.6],[-13,17]],[[-26,27.3],[-14,27.3],[-4,28]]],
+  areas:[{n:1,name:'中央貨櫃場',sub:'主戰區',x:0,z:0},{n:2,name:'碼頭岸壁',sub:'長距離',x:-24,z:-22},{n:3,name:'卸貨平台',sub:'高台',x:-15,z:-16},{n:4,name:'倉庫走道',sub:'近距離',x:-20,z:17.5}]};
+const MAP_ORDER=['desert','indoor','jungle','snow','port'];
+// mirror a west-half point to the east half for this map
+function mirOf(def){return def&&def.sym==='x'?(p=>[-p[0],p[1]]):mir;}
 function mapSolids(def){
   const out=[];const add=(cx,cz,w,d,h,kind)=>out.push({minX:cx-w/2,maxX:cx+w/2,minZ:cz-d/2,maxZ:cz+d/2,minY:0,maxY:h,cx,cz,w,d,h,kind});
-  [...SPAWN_WALLS,...def.west].forEach(o=>{add(...o);add(-o[0],-o[1],o[2],o[3],o[4],o[5]);});
+  const m=mirOf(def);
+  [...SPAWN_WALLS,...def.west].forEach(o=>{add(...o);const q=m([o[0],o[1]]);add(q[0],q[1],o[2],o[3],o[4],o[5]);});
   def.center.forEach(o=>add(...o));
   const oh=def===MAPS.indoor?7.5:6;
   add(0,B.minZ-.5,84,1,oh,'outer');add(0,B.maxZ+.5,84,1,oh,'outer');add(B.minX-.5,0,1,60,oh,'outer');add(B.maxX+.5,0,1,60,oh,'outer');
@@ -146,4 +186,4 @@ function inRect(list,x,z){for(const r of list)if(x>r.minX&&x<r.maxX&&z>r.minZ&&z
 
 
 export {W,WDESC,GEAR,MAG_CLASS,HELMET_HEAD,magCap,headMul,PRICE_MUL,START_MONEY,KILL_REWARD,STREAK_BONUS,MONEY_CAP,RESPAWN,SPAWN_PROT,HP_MAX,TEAM_SIZE,SHOP,DIFF,NAMES,STYLES,PREFS,
-  B,BZ,mir,SPAWNS,SPAWN_WALLS,MAPS,MAP_ORDER,mapSolids,rects,inRect};
+  B,BZ,mir,mirOf,SPAWNS,SPAWN_WALLS,MAPS,MAP_ORDER,mapSolids,rects,inRect};
