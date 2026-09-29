@@ -101,9 +101,13 @@ kbd{font-family:var(--f-num);font-weight:700;background:rgba(255,255,255,.12);bo
 #hurtDir.show{opacity:.9;transition:none}
 #vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(200,20,10,.55));opacity:0;transition:opacity .5s}
 #scope{position:absolute;inset:0;background:radial-gradient(circle at center,transparent 0 33vmin,#020406 33.4vmin)}
-#scope::before,#scope::after{content:"";position:absolute;background:#000;left:50%;top:50%}
-#scope::before{width:66vmin;height:1px;margin-left:-33vmin}
-#scope::after{height:66vmin;width:1px;margin-top:-33vmin}
+#scope svg{position:absolute;left:50%;top:50%;width:66.8vmin;height:66.8vmin;transform:translate(-50%,-50%);fill:none;stroke-linecap:butt}
+#scope .ret{stroke:#07090b;stroke-width:1.1}
+#scope .ret .outer{stroke-width:6}
+#scope .ret .post{stroke-width:4}
+#scope .ret .fine{stroke-width:.7}
+#scope .ret .dot{fill:#d8342a;stroke:none}
+#scope .halo{stroke:rgba(255,255,255,.28);stroke-width:2.4}
 
 /* ---------- screens ---------- */
 .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding-inline:16px;padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-bottom,0px));overflow:auto}
