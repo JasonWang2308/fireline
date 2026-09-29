@@ -16,7 +16,7 @@
 <div id="hud" hidden>
   <div id="vital" class="pad-t">
     <div class="hp-row"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg><span id="hpNum">100</span><div class="hpbar"><i id="hpFill"></i></div></div>
-    <div class="sub-row"><span id="armorChip" class="chip" hidden>護甲 −30% 傷害</span><span id="bootsChip" class="chip" hidden>靴子 +12% 移速</span><span id="glovesChip" class="chip" hidden>手甲 −40% 後座力</span><span id="protChip" class="chip prot" hidden>重生保護</span></div>
+    <div class="sub-row"><span id="armorChip" class="chip" hidden>護甲 −30% 傷害</span><span id="bootsChip" class="chip" hidden>靴子 +12% 移速</span><span id="glovesChip" class="chip" hidden>手甲 −40% 後座力</span><span id="medkitChip" class="chip" hidden>醫療針 · 按 H</span><span id="protChip" class="chip prot" hidden>重生保護</span></div>
     <div class="money"><span class="coin" aria-hidden="true"></span><span id="moneyNum">$800</span></div>
   </div>
   <div id="score" class="pad-t">
@@ -50,6 +50,7 @@
   <button class="tbtn" id="tReload" style="right:126px;bottom:124px">換彈</button>
   <button class="tbtn" id="tSwap" style="right:126px;bottom:40px">切換</button>
   <button class="tbtn" id="tScope" style="right:210px;bottom:70px" hidden>開鏡</button>
+  <button class="tbtn" id="tHeal" style="right:210px;bottom:150px" hidden>補血</button>
   <button class="tbtn" id="tBuy" style="left:50%;margin-left:-32px;bottom:170px" hidden>購買</button>
   <button class="tbtn" id="tBoard" style="right:28px;top:calc(90px + env(safe-area-inset-top,0px));width:48px;height:48px;font-size:11px">戰績</button>
 </div>
@@ -71,7 +72,7 @@
       <div class="opt"><label for="sens">滑鼠靈敏度</label><input id="sens" type="range" min="0.6" max="3" step="0.1" value="1.4"></div>
     </div>
     <div class="menu-actions"><button class="cta" id="startBtn" type="button">單機對戰（AI）</button><button class="cta alt" id="onlineBtn" type="button">線上對戰</button><button class="ghost" id="armoryBtn" type="button">武器與裝備一覽</button><button class="ghost" id="xhBtn" type="button">準心設定</button></div>
-    <div class="keys" id="keysHelp"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動 · 滑鼠 瞄準 · 左鍵 射擊 · 右鍵 狙擊鏡 · <kbd>R</kbd> 換彈 · <kbd>B</kbd> 購買 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>/<kbd>Q</kbd> 切換武器（3 為小刀） · <kbd>Tab</kbd> 戰績 · <kbd>M</kbd> 靜音 · <kbd>Esc</kbd> 暫停</div>
+    <div class="keys" id="keysHelp"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動 · 滑鼠 瞄準 · 左鍵 射擊 · 右鍵 狙擊鏡 · <kbd>R</kbd> 換彈 · <kbd>H</kbd> 醫療針 · <kbd>B</kbd> 購買 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>/<kbd>Q</kbd> 切換武器（3 為小刀） · <kbd>Tab</kbd> 戰績 · <kbd>M</kbd> 靜音 · <kbd>Esc</kbd> 暫停</div>
   </div>
 </section>
 

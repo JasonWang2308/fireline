@@ -148,6 +148,7 @@ export class Rooms {
         break;
       }
       case 'reload': { if (match && typeof m.wk === 'string') match.humanReload(c.id, m.wk); break; }
+      case 'heal': { if (match) match.humanHeal(c.id); break; }
       case 'buy': { if (match && typeof m.key === 'string' && (W[m.key] || GEAR[m.key])) match.humanBuy(c.id, m.key); break; }
       case 'leave':
         this.leave(c);

@@ -15,6 +15,7 @@
 //   melee    { ts, kind:'swing'|'heavy'|'dash', charge?, yaw? }  heavy = axe charge (s), dash = katana
 //   reload   { wk }
 //   buy      { key }
+//   heal     {}                       use the field medkit (server checks ownership and HP)
 //   leave    {}
 //
 // server -> client
@@ -27,7 +28,7 @@
 //   hurt     { x, z, hp }                  to the victim
 //   kill     { k, v, wk, hs, tk:[a,b], kk, vd, reward, streak }
 //   spawn    { x, y, z, yaw }              to the player who (re)spawns
-//   you      { hp, money, armor, boots, gloves, primary, secondary, kills, deaths }  private state
+//   you      { hp, money, armor, boots, gloves, medkit, healT, primary, secondary, kills, deaths }  private state
 //   bought   { key }
 //   gone     { id }
 //   end      { tk, sc:[[id,kills,deaths],...] }

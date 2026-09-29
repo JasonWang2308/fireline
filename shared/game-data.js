@@ -4,60 +4,64 @@
 const W={
   p9:      {name:'P9 標配手槍',       cls:'手槍',        slot:2,dmg:26, pellets:1,rpm:380, mag:12, reserve:48, reload:1.5,recoil:.35,range:25,speed:1.0, price:0,   auto:false,spread:.012,botAcc:.42,look:'pistol'},
   magnum:  {name:'M-44 麥格農',       cls:'手槍',        slot:2,dmg:48, pellets:1,rpm:170, mag:7,  reserve:35, reload:2.0,recoil:.9, range:35,speed:.98, price:500, auto:false,spread:.014,botAcc:.46,look:'magnum'},
-  revolver:{name:'R-6 左輪手槍',      cls:'手槍',        slot:2,dmg:55, pellets:1,rpm:140, mag:6,  reserve:30, reload:2.8,recoil:1.0,range:45,speed:.98, price:600, auto:false,spread:.006,botAcc:.5, look:'revolver',tags:['六發','遠距精準','爆頭一擊']},
-  h9:      {name:'H-9 重型手槍',      cls:'手槍',        slot:2,dmg:72, pellets:1,rpm:110, mag:6,  reserve:24, reload:2.2,recoil:1.25,range:30,speed:.97,price:700, auto:false,spread:.016, botAcc:.48,look:'h9',tags:['爆頭一擊']},
+  revolver:{name:'R-6 左輪手槍',      cls:'手槍',        slot:2,dmg:55, pellets:1,rpm:150, mag:6,  reserve:30, reload:2.8,recoil:.8, range:50,speed:.98, price:600, auto:false,spread:.005,botAcc:.52,look:'revolver',tags:['六發','50 m 不衰減','遠距爆頭一擊']},
+  h9:      {name:'H-9 重型手槍',      cls:'手槍',        slot:2,dmg:72, pellets:1,rpm:110, mag:6,  reserve:24, reload:2.2,recoil:1.35,range:16,speed:.97,price:700, auto:false,spread:.02,  botAcc:.48,look:'h9',tags:['近距兩槍倒地','射程短']},
   dual:    {name:'D-9 雙槍',          cls:'手槍',        slot:2,dmg:24, pellets:1,rpm:520, mag:30, reserve:90, reload:3.0,recoil:.4, range:22,speed:.98, price:800, auto:false,spread:.022,botAcc:.42,look:'dual',tags:['雙持']},
   knife:   {name:'小刀',              cls:'近戰',        slot:3,dmg:50, pellets:1,rpm:130, mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.1,speed:1.1,price:0,   auto:true, spread:0,   botAcc:.75,look:'knife',melee:true,tags:['背刺 110']},
   katana:  {name:'武士刀',            cls:'近戰',        slot:3,dmg:65, pellets:1,rpm:100, mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.6,speed:1.05,price:1200,auto:true,spread:0,  botAcc:.75,look:'katana',melee:true,dash:{cd:5,dist:6.5,time:.22,dmg:100},tags:['右鍵 衝刺拔刀斬','冷卻 5 秒']},
   axe:     {name:'戰斧',              cls:'近戰',        slot:3,dmg:60, pellets:1,rpm:80,  mag:0,  reserve:0,  reload:0,  recoil:0,  range:2.3,speed:.96, price:900, auto:true,spread:0,  botAcc:.75,look:'axe',melee:true,charge:{time:1.5,max:130},tags:['按住右鍵蓄力','最高 130 傷害']},
   smg:     {name:'V-9 衝鋒槍',        cls:'衝鋒槍',      slot:1,dmg:22, pellets:1,rpm:850, mag:30, reserve:120,reload:2.1,recoil:.25,range:22,speed:.97, price:1500,auto:true, spread:.026,botAcc:.36,look:'smg',tags:['穩定']},
   rapid:   {name:'SM-12 速射衝鋒槍',  cls:'衝鋒槍',      slot:1,dmg:16, pellets:1,rpm:1100,mag:50, reserve:150,reload:2.4,recoil:.42,range:16,speed:.98, price:1800,auto:true, spread:.036,botAcc:.34,look:'rapid',tags:['極高射速']},
+  mp7:     {name:'MP-7 高機動衝鋒槍', cls:'衝鋒槍',      slot:1,dmg:19, pellets:1,rpm:800, mag:40, reserve:160,reload:2.0,recoil:.3, range:20,speed:1.05,price:2000,auto:true, spread:.024,botAcc:.37,look:'mp7',tags:['高機動','40 發']},
   shotgun: {name:'BR-12 泵動霰彈槍',  cls:'霰彈槍',      slot:1,dmg:17, pellets:8,rpm:70,  mag:6,  reserve:30, reload:2.6,recoil:1.1,range:10,speed:.93, price:2000,auto:false,spread:.085,botAcc:.5, look:'shotgun',tags:['一發爆發']},
   autoshot:{name:'S-12 自動霰彈槍',   cls:'霰彈槍',      slot:1,dmg:11, pellets:8,rpm:230, mag:8,  reserve:32, reload:3.0,recoil:.8, range:9, speed:.92, price:3000,auto:false,spread:.095,botAcc:.48,look:'autoshot',tags:['連續射擊']},
   carbine: {name:'K-8 卡賓槍',        cls:'突擊步槍',    slot:1,dmg:28, pellets:1,rpm:720, mag:30, reserve:90, reload:2.0,recoil:.32,range:35,speed:.96, price:2300,auto:true, spread:.018,botAcc:.43,look:'carbine',tags:['高機動']},
   burst:   {name:'Burst-4 四連發步槍',cls:'突擊步槍',    slot:1,dmg:30, pellets:1,rpm:900, burst:4,burstDelay:.38,mag:32,reserve:96,reload:2.3,recoil:.34,range:50,speed:.9,price:2400,auto:false,spread:.009,botAcc:.5,look:'burst',tags:['四連發']},
   rifle:   {name:'AR-7 突擊步槍',     cls:'突擊步槍',    slot:1,dmg:32, pellets:1,rpm:600, mag:30, reserve:90, reload:2.4,recoil:.45,range:45,speed:.9,  price:2700,auto:true, spread:.015,botAcc:.45,look:'rifle',tags:['全自動']},
   tactical:{name:'R-5 戰術步槍',      cls:'半自動步槍',  slot:1,dmg:55, pellets:1,rpm:240, mag:15, reserve:45, reload:2.4,recoil:.7, range:60,speed:.88, price:3200,auto:false,spread:.006,botAcc:.5, look:'tactical',tags:['半自動','爆頭一擊']},
+  battle:  {name:'MR-8 戰鬥步槍',     cls:'戰鬥步槍',    slot:1,dmg:42, pellets:1,rpm:300, mag:20, reserve:60, reload:2.5,recoil:.4, range:55,speed:.9,  price:3000,auto:false,spread:.01, scope:40,scopeSpread:.004,botAcc:.5,look:'battle',tags:['半自動','瞄準鏡 ×2','低後座']},
   dmr:     {name:'DMR-6 精準射手步槍',cls:'精準射手步槍',slot:1,dmg:75, pellets:1,rpm:170, mag:10, reserve:30, reload:2.8,recoil:.95,range:75,speed:.85, price:3800,auto:false,spread:.012,scope:40,scopeSpread:.0025,botAcc:.55,look:'dmr',tags:['半自動','瞄準鏡 ×2']},
   scout:   {name:'SV-2 輕型栓動步槍', cls:'栓動步槍',    slot:1,dmg:88, pellets:1,rpm:48,  mag:10, reserve:30, reload:2.6,recoil:1.0,range:80,speed:.97, price:2600,auto:false,spread:.035,scope:28,scopeSpread:.0015,bolt:true,botAcc:.55,look:'scout',tags:['栓動','瞄準鏡 ×3','輕量']},
   sniper:  {name:'LX-5 栓動狙擊槍',   cls:'栓動步槍',    slot:1,dmg:115,pellets:1,rpm:42,  mag:5,  reserve:20, reload:3.4,recoil:1.6,range:90,speed:.82, price:4750,auto:false,spread:.1,  scope:18,scopeSpread:.0012,bolt:true,botAcc:.6,look:'sniper',tags:['栓動','狙擊鏡 ×4','一擊倒地']},
+  lmg:     {name:'L-7 輕機槍',        cls:'輕機槍',      slot:1,dmg:29, pellets:1,rpm:650, mag:60, reserve:180,reload:3.5,recoil:.5, range:40,speed:.85, price:4100,auto:true, spread:.03, botAcc:.42,look:'lmg',tags:['60 發','火力壓制']},
   heavy:   {name:'HX-60 重機槍',      cls:'重型武器',    slot:1,dmg:34, pellets:1,rpm:750, mag:100,reserve:200,reload:4.8,recoil:.55,range:45,speed:.75, price:6000,auto:true, spread:.04, botAcc:.4, look:'heavy',tags:['百發彈匣']},
 };
 const WDESC={
   p9:'每次重生免費配發的基本手槍',knife:'免費近戰武器，從背後攻擊一刀倒地',
   katana:'攻擊距離長的近戰武器。右鍵向前衝刺約 6.5 公尺，途中斬到的第一個敵人受到 100 傷害，冷卻 5 秒',axe:'單擊 60 傷害。按住右鍵蓄力，放開時揮出重擊，蓄滿 1.5 秒達到上限 130 傷害；蓄力時移動變慢',
-  magnum:'單發傷害高的平價半自動副武器',revolver:'六發左輪，精準度極高、射程遠，中遠距離也能爆頭一槍倒地，但裝填慢',h9:'近中距離的重火力副武器，爆頭一槍倒地，主武器沒子彈時的救命槍',dual:'雙持連射，彈匣大但裝填慢',
-  smg:'後座穩、好控制的近距離主力',rapid:'射速極高、火力猛，但後座偏大、射程短，適合貼身',
+  magnum:'單發傷害高的平價半自動副武器',revolver:'六發左輪，手槍中最準，50 公尺內傷害不衰減，中遠距離也能爆頭一槍倒地；裝填慢',h9:'近距離手炮：16 公尺內兩槍倒地（對方有護甲也一樣），爆頭一槍；距離一拉開傷害就大幅下降',dual:'雙持連射，彈匣大但裝填慢',
+  smg:'後座穩、好控制的近距離主力',rapid:'射速極高、火力猛，但後座偏大、射程短，適合貼身',mp7:'40 發彈匣、拿著跑得比其他槍都快的衝鋒槍。單發傷害和射程比 V-9 低，用機動性換火力',
   shotgun:'近距離一發爆發，打不中就很危險',autoshot:'單發較弱但可連續射擊，近距離持續壓制',
   carbine:'傷害略低於 AR-7，但射速高、跑得快，適合突襲',burst:'每次扣扳機固定 4 連發，首發精準，高手中距離很強，但無法持續掃射',rifle:'全距離平衡的全自動步槍',
-  tactical:'半自動、精準度高，中遠距離兩槍倒地，爆頭一槍',dmr:'附 2 倍瞄準鏡的半自動精準步槍，介於步槍和狙擊槍之間',
-  scout:'輕量栓動步槍，3 倍鏡、移動快，身體 88 傷害，爆頭一擊',sniper:'重型栓動狙擊槍，4 倍鏡，一槍倒地，但拉栓慢、移動很慢',heavy:'百發彈匣壓制火力，移動最慢',
+  tactical:'半自動、精準度高，中遠距離兩槍倒地，爆頭一槍',battle:'附 2 倍鏡的半自動戰鬥步槍。單發不致命（爆頭 84），但後座低、20 發彈匣，中距離連續點射容錯高',dmr:'附 2 倍瞄準鏡的半自動精準步槍，介於步槍和狙擊槍之間',
+  scout:'輕量栓動步槍，3 倍鏡、移動快，身體 88 傷害，爆頭一擊',sniper:'重型栓動狙擊槍，4 倍鏡，一槍倒地，但拉栓慢、移動很慢',lmg:'60 發彈匣的輕機槍，能長時間壓制；換彈 3.5 秒、移動偏慢。介於 AR-7 和 HX-60 之間',heavy:'百發彈匣壓制火力，移動最慢',
 };
 const GEAR={
   armor:{name:'戰術護甲',price:650,desc:'受到的所有傷害降低 30%，持續到死亡為止。'},
   boots:{name:'輕量戰術靴',price:400,desc:'移動速度提高 12%，可以彌補重型武器的機動性。死亡後消失。'},
   gloves:{name:'穩定手甲',price:450,desc:'射擊後座力與連射擴散降低 40%，自動武器更好控。死亡後消失。'},
+  medkit:{name:'戰地醫療針',price:500,heal:35,time:4,desc:'按 H 使用：4 秒內恢復 35 HP。注射時不能射擊、移動變慢，被擊中會中斷（已恢復的保留）。一次帶一支，死亡後消失。'},
 };
 // shorter matches get a cheaper shop so the full buy loop still fits
 const PRICE_MUL={180:.5,300:.7,600:1};
 const START_MONEY=800, KILL_REWARD=300, STREAK_BONUS=100, MONEY_CAP=16000, RESPAWN=3, SPAWN_PROT=2, HP_MAX=100, TEAM_SIZE=5;
 const SHOP=[
   {group:'手槍 PISTOL',items:['magnum','revolver','h9','dual']},
-  {group:'衝鋒槍 SMG',items:['smg','rapid']},
+  {group:'衝鋒槍 SMG',items:['smg','rapid','mp7']},
   {group:'霰彈槍 SHOTGUN',items:['shotgun','autoshot']},
   {group:'步槍 RIFLE',items:['carbine','burst','rifle','tactical']},
-  {group:'精準與栓動 MARKSMAN',items:['dmr','scout','sniper']},
-  {group:'重型武器 HEAVY',items:['heavy']},
+  {group:'精準與栓動 MARKSMAN',items:['scout','battle','dmr','sniper']},
+  {group:'重型武器 HEAVY',items:['lmg','heavy']},
   {group:'近戰 MELEE',items:['katana','axe']},
-  {group:'裝備 GEAR',items:['armor','boots','gloves']},
+  {group:'裝備 GEAR',items:['armor','boots','gloves','medkit']},
 ];
 const DIFF={easy:{acc:.55,react:.8},std:{acc:.8,react:.5},hard:{acc:1.05,react:.3}};
 const NAMES=[['你','獵鷹','石牆','幽靈','烈風'],['毒蛇','鐵砧','野狼','雷霆','黑曜']];
 const STYLES=['rifle','sniper','rusher','shotgun','marksman','heavy','scout','smg','rifle','marksman'];
 const PREFS={
-  rifle:['rifle','burst','carbine','smg','magnum'],sniper:['sniper','scout','dmr','rifle','smg','h9'],smg:['smg','rapid','dual'],
-  shotgun:['autoshot','shotgun','smg','dual'],heavy:['heavy','rifle','smg','magnum'],marksman:['dmr','tactical','burst','carbine','h9'],
-  rusher:['carbine','rapid','smg','magnum'],scout:['scout','tactical','carbine','revolver'],
+  rifle:['rifle','burst','carbine','smg','magnum'],sniper:['sniper','scout','dmr','rifle','smg','revolver'],smg:['mp7','smg','rapid','dual'],
+  shotgun:['autoshot','shotgun','smg','h9'],heavy:['heavy','lmg','rifle','smg','magnum'],marksman:['dmr','battle','tactical','burst','carbine','revolver'],
+  rusher:['carbine','mp7','rapid','smg','h9'],scout:['scout','battle','tactical','carbine','revolver'],
 };
 
 /* ================= MAP ================= */
