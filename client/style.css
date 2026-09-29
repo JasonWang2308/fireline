@@ -171,7 +171,7 @@ input[type=range]{accent-color:var(--coin);width:180px}
 .bitem .pr{font:700 15px/1 var(--f-num);color:var(--coin);font-variant-numeric:tabular-nums}
 .bitem.poor .pr{color:#e0624b}
 .bitem .own{font:700 10px/1 var(--f-num);color:var(--ok);letter-spacing:.1em}
-.buy-detail{padding:18px;display:flex;flex-direction:column;gap:12px}
+.buy-detail{padding:18px;display:flex;flex-direction:column;gap:12px;position:sticky;top:0;align-self:start}
 .buy-detail svg{width:100%;max-width:280px;height:100px;fill:#e6edf3;align-self:center}
 .buy-detail h3{margin:0;font-size:20px}
 .buy-detail p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
@@ -247,6 +247,7 @@ output{font:600 12px var(--f-num);min-width:3em;color:var(--muted)}
 
   .buy-body{grid-template-columns:1fr}
   .buy-list{border-right:0;border-bottom:1px solid var(--line)}
+  .buy-detail{position:static}
   .board-grid{grid-template-columns:1fr}
   #mini{width:136px;height:96px}
   #areaTag{bottom:calc(118px + env(safe-area-inset-bottom,0px))}
