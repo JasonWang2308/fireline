@@ -1,5 +1,5 @@
 ﻿# 火線交鋒 FIRELINE — 更新 / 推送 / 啟動工具
-# 由桌面的「火線交鋒 更新.bat」呼叫。這個檔案放在 repo 裡，git pull 時會跟著更新。
+# 由「火線交鋒 更新.bat」呼叫。這個檔案放在 repo 裡，git pull 時會跟著更新。
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
@@ -41,83 +41,82 @@ function Write-LanUrls([int]$Port) {
   try { Set-Clipboard -Value ("http://" + $ips[0] + ":$Port"); Write-Host '（第一個網址已複製到剪貼簿，可以直接貼給朋友）' } catch {}
 }
 
+function Get-GamePort {
+  foreach ($p in 3000, 3001) { $o = Get-PortOwner $p; if ($o -and $o.ProcessName -eq 'node') { return $p } }
+  return $null
+}
+
 function Show-FriendUrl {
   Write-Host ''
-  $port = $null
-  foreach ($p in 3000, 3001) { $o = Get-PortOwner $p; if ($o -and $o.ProcessName -eq 'node') { $port = $p; break } }
+  $port = Get-GamePort
   if (-not $port) {
-    Write-Host '遊戲伺服器目前沒有在執行。' -ForegroundColor Yellow
-    Write-Host '請先在另一個視窗選 1 或 3 啟動遊戲，朋友才連得進來。下面先列出啟動後的網址：'
+    Write-Host '遊戲伺服器目前沒有在執行，請先選 4 開啟遊戲，朋友才連得進來。下面先列出開啟後的網址：' -ForegroundColor Yellow
     $port = 3000
   }
   Write-LanUrls $port
   Write-Host ''
   Write-Host '朋友連不進來的話：' -ForegroundColor Cyan
-  Write-Host '  - 確認對方跟你連的是同一個 Wi-Fi（訪客網路通常互相連不到）'
-  Write-Host '  - 第一次啟動時 Windows 防火牆若有跳窗，要勾「私人網路」並允許 Node.js'
+  Write-Host '  - 對方要跟你接在同一台路由器（Wi-Fi 或網路線都可以；訪客網路通常互相連不到）'
+  Write-Host '  - 第一次開啟時 Windows 防火牆若有跳窗，要勾「私人網路」並允許 Node.js'
   Write-Host '  - 連線後選「線上對戰」，你建立房間，再把 4 個字的房間代碼傳給朋友'
   Wait-Menu
 }
 
+# 伺服器在背景執行（沒有視窗），輸出寫到 logs\server.log，選單可以繼續操作
+function Start-ServerBackground([int]$Port) {
+  $logDir = Join-Path $GameDir 'logs'
+  New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+  $out = Join-Path $logDir 'server.log'; $err = Join-Path $logDir 'server-error.log'
+  $env:PORT = "$Port"
+  $p = Start-Process node -ArgumentList 'server/index.js' -WorkingDirectory $GameDir -WindowStyle Hidden -RedirectStandardOutput $out -RedirectStandardError $err -PassThru
+  Remove-Item Env:PORT -ErrorAction SilentlyContinue
+  for ($i = 0; $i -lt 25; $i++) {
+    Start-Sleep -Milliseconds 200
+    if (Get-PortOwner $Port) { return $true }
+    if ($p.HasExited) { break }
+  }
+  Write-Host '[錯誤] 遊戲伺服器沒有成功啟動，錯誤訊息：' -ForegroundColor Red
+  if (Test-Path $err) { Get-Content $err -Tail 15 | ForEach-Object { Write-Host "  $_" } }
+  return $false
+}
+
+function Stop-GameServer {
+  foreach ($p in 3000, 3001) { $o = Get-PortOwner $p; if ($o -and $o.ProcessName -eq 'node') { Stop-Process -Id $o.Id -Force -ErrorAction SilentlyContinue } }
+  Start-Sleep -Milliseconds 600
+}
+
 function Start-Game {
+  $port = Get-GamePort
+  if ($port) {
+    Write-Host ''
+    Write-Host "遊戲伺服器已經在背景執行，直接打開瀏覽器。" -ForegroundColor Cyan
+    Start-Process "http://localhost:$port"
+    Wait-Menu; return
+  }
   $port = 3000
   $owner = Get-PortOwner $port
-  if ($owner) {
-    if ($owner.ProcessName -eq 'node') {
-      Write-Host "連接埠 $port 已經有遊戲伺服器在執行，可能是更新前的舊版本。" -ForegroundColor Yellow
-      $a = Read-Host '要關閉它並用最新版重新啟動嗎？(Y/N，直接按 Enter = Y)'
-      if ($a -eq '' -or $a -match '^[Yy]') {
-        Stop-Process -Id $owner.Id -Force
-        Start-Sleep -Milliseconds 800
-      } else {
-        Start-Process "http://localhost:$port"
-        Write-Host '已用瀏覽器打開正在執行的遊戲。'
-        Wait-Menu; return
-      }
-    } else {
-      Write-Host "連接埠 3000 被 $($owner.ProcessName) 占用，改用 3001。" -ForegroundColor Yellow
-      $port = 3001
-    }
-  }
+  if ($owner) { Write-Host "連接埠 3000 被 $($owner.ProcessName) 占用，改用 3001。" -ForegroundColor Yellow; $port = 3001 }
   Write-Host ''
-  Write-Host "正在啟動遊戲伺服器，瀏覽器會自動打開 http://localhost:$port" -ForegroundColor Cyan
-  Write-Host '要停止伺服器請按 Q 或 Ctrl+C，會回到選單。' -ForegroundColor Yellow
+  Write-Host '正在背景啟動遊戲伺服器…' -ForegroundColor Cyan
+  if (-not (Start-ServerBackground $port)) { Wait-Menu; return }
+  Start-Process "http://localhost:$port"
+  Write-Host "已啟動，瀏覽器會打開 http://localhost:$port" -ForegroundColor Green
+  Write-Host '伺服器在背景執行，可以繼續用選單（例如選 3 看朋友網址）。選 5 離開時會一併關閉伺服器。'
   Write-Host ''
   Write-LanUrls $port
-  Write-Host ''
-  Start-Process cmd -ArgumentList '/c', "timeout /t 2 /nobreak >nul & start http://localhost:$port" -WindowStyle Hidden
-  $env:PORT = "$port"
-  # Run node directly (not npm.cmd): npm.cmd is itself a batch file, and Ctrl+C inside nested
-  # batch files makes cmd ask "Terminate batch job (Y/N)?" once per level.
-  $node = Start-Process node -ArgumentList 'server/index.js' -WorkingDirectory $GameDir -NoNewWindow -PassThru
-  Remove-Item Env:PORT -ErrorAction SilentlyContinue
-  # Catch Ctrl+C ourselves so it only stops the server and never reaches cmd.
-  [Console]::TreatControlCAsInput = $true
-  try {
-    while (-not $node.HasExited) {
-      if ([Console]::KeyAvailable) {
-        $k = [Console]::ReadKey($true)
-        if ($k.Key -eq 'Q' -or ($k.Key -eq 'C' -and ($k.Modifiers -band [ConsoleModifiers]::Control))) { break }
-      }
-      Start-Sleep -Milliseconds 150
-    }
-  } finally {
-    [Console]::TreatControlCAsInput = $false
-    if (-not $node.HasExited) { Stop-Process -Id $node.Id -Force -ErrorAction SilentlyContinue }
-  }
-  Write-Host ''
-  Write-Host '遊戲伺服器已停止。' -ForegroundColor Cyan
   Wait-Menu
 }
 
 function Update-Game {
   Write-Host ''
+  $menuFile = Join-Path $GameDir 'tools\fireline-menu.ps1'
+  $before = (Get-FileHash $menuFile).Hash
   Write-Host '[1/2] 從 GitHub 下載最新版…' -ForegroundColor Cyan
   & git pull --ff-only
   if ($LASTEXITCODE -ne 0) {
     Write-Host ''
     Write-Host '[注意] 無法自動更新。通常是這台電腦有還沒推送的修改，' -ForegroundColor Yellow
-    Write-Host '       可以先選 2 推送，再選 1 更新。' -ForegroundColor Yellow
+    Write-Host '       可以先選 1 推送，再選 2 更新。' -ForegroundColor Yellow
     Wait-Menu; return
   }
   Write-Host '[2/2] 檢查套件…' -ForegroundColor Cyan
@@ -126,7 +125,21 @@ function Update-Game {
     Write-Host '[錯誤] 套件安裝失敗，請檢查網路後再試一次。' -ForegroundColor Red
     Wait-Menu; return
   }
-  Start-Game
+  Write-Host ''
+  Write-Host '更新完成！' -ForegroundColor Green
+  $port = Get-GamePort
+  if ($port) {
+    # 正在跑的伺服器還是舊版，換成新版
+    Stop-GameServer
+    if (Start-ServerBackground $port) { Write-Host '背景的遊戲伺服器已換成新版，瀏覽器重新整理（F5）就是最新版。' -ForegroundColor Green }
+  } else {
+    Write-Host '選 4 開啟遊戲。'
+  }
+  if ((Get-FileHash $menuFile).Hash -ne $before) {
+    Write-Host ''
+    Write-Host '這次更新也改了選單本身，請關閉這個視窗再重新打開，新選單才會生效。' -ForegroundColor Yellow
+  }
+  Wait-Menu
 }
 
 function Push-Changes {
@@ -159,22 +172,25 @@ function Push-Changes {
 
 while ($true) {
   Clear-Host
+  $port = Get-GamePort
   Write-Host '=========================================='
   Write-Host '   火線交鋒 FIRELINE' -ForegroundColor Yellow
   Write-Host "   遊戲資料夾：$GameDir"
+  if ($port) { Write-Host "   伺服器：背景執行中 http://localhost:$port" -ForegroundColor Green }
+  else { Write-Host '   伺服器：未啟動' -ForegroundColor DarkGray }
   Write-Host '=========================================='
   Write-Host ''
-  Write-Host '  1. 更新到最新版並啟動遊戲'
-  Write-Host '  2. 推送這台電腦的修改到 GitHub'
-  Write-Host '  3. 只啟動遊戲（不更新）'
-  Write-Host '  4. 顯示給同一個 Wi-Fi 朋友的網址'
-  Write-Host '  5. 離開'
+  Write-Host '  1. 推送這台電腦的修改到 GitHub'
+  Write-Host '  2. 從 GitHub 更新到最新版'
+  Write-Host '  3. 顯示同一個 Wi-Fi 朋友的網址'
+  Write-Host '  4. 開啟遊戲'
+  Write-Host '  5. 離開（會關閉遊戲伺服器）'
   Write-Host ''
   switch (Read-Host '請輸入 1-5 後按 Enter') {
-    '1' { Update-Game }
-    '2' { Push-Changes }
-    '3' { Start-Game }
-    '4' { Show-FriendUrl }
-    '5' { exit }
+    '1' { Push-Changes }
+    '2' { Update-Game }
+    '3' { Show-FriendUrl }
+    '4' { Start-Game }
+    '5' { if (Get-GamePort) { Write-Host '正在關閉遊戲伺服器…'; Stop-GameServer }; exit }
   }
 }
