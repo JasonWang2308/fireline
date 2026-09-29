@@ -368,7 +368,7 @@ function buy(e,key){
   if(!inBuyZone(e,world)||!e.alive)return false;
   if(online&&e===P){online.net.send('buy',{key});return false;}
   const pr=priceOf(key);
-  if(GEAR[key]){if(e[key]||e.money<pr)return false;e.money-=pr;e[key]=true;if(GEAR[key].mag)for(const k in e.ammo)e.ammo[k].mag=Math.max(e.ammo[k].mag,magCap(e,k));return true;}
+  if(GEAR[key]){if((e[key]&&!GEAR[key].stack)||e.money<pr)return false;e.money-=pr;e[key]=GEAR[key].stack?(+e[key]||0)+1:true;if(GEAR[key].mag)for(const k in e.ammo)e.ammo[k].mag=Math.max(e.ammo[k].mag,magCap(e,k));return true;}
   if(e.money<pr)return false;if(e.primary===key||e.secondary===key)return false;
   if(e.melee===key)return false;
   e.money-=pr;giveWeapon(e,key);return true;
@@ -728,7 +728,7 @@ function updateHud(){
   setText('hpNum',String(Math.max(0,Math.ceil(e.hp))));
   const f=$('hpFill');f.style.transform=`scaleX(${Math.max(0,e.hp)/HP_MAX})`;f.classList.toggle('low',e.hp<35);
   $('armorChip').hidden=!e.armor||!e.alive;$('bootsChip').hidden=!e.boots||!e.alive;$('glovesChip').hidden=!e.gloves||!e.alive;$('medkitChip').hidden=!e.medkit||!e.alive;$('helmetChip').hidden=!e.helmet||!e.alive;
-  {const mg=Object.keys(GEAR).filter(g=>GEAR[g].mag&&e[g]).map(g=>GEAR[g].name.replace('擴充彈匣',''));setText('magChip','擴充彈匣：'+mg.join('、'));$('magChip').hidden=!mg.length||!e.alive;}$('protChip').hidden=!(e.spawnProt>0&&e.alive);
+  {const mg=Object.keys(GEAR).filter(g=>GEAR[g].mag&&e[g]).map(g=>GEAR[g].name.replace('擴充彈匣','')+(+e[g]>1?'×'+e[g]:''));setText('magChip','擴充彈匣：'+mg.join('、'));$('magChip').hidden=!mg.length||!e.alive;}$('protChip').hidden=!(e.spawnProt>0&&e.alive);
   setText('moneyNum',fmtMoney(e.money));
   let area='';if(e.alive)for(const a of MAP.areas){const q=mirOf(MAP)([a.x,a.z]);if(Math.hypot(e.pos.x-a.x,e.pos.z-a.z)<7.5||Math.hypot(e.pos.x-q[0],e.pos.z-q[1])<7.5){area=a.n+' '+a.name+'（'+a.sub+'）';break;}}
   setText('areaTag',area||MAP.name);
@@ -813,7 +813,8 @@ const MAG_SVG='M42 4h16l-2 32H44zM46 9h8v3h-8zM46 15h8v3h-8zM46 21h8v3h-8z';
 function silSVG(look){if(/^mag_/.test(look))return `<svg viewBox="0 0 100 40" aria-hidden="true"><path fill-rule="evenodd" d="${MAG_SVG}"/></svg>`;if(GEAR_SVG[look])return `<svg viewBox="0 0 100 40" aria-hidden="true"><path d="${GEAR_SVG[look]}"/></svg>`;return `<svg viewBox="0 0 100 40" aria-hidden="true">${SIL[look].map(r=>`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}"/>`).join('')}</svg>`;}
 let buySel='rifle';
 function itemInfo(k){if(GEAR[k])return{name:GEAR[k].name,cls:'裝備',price:priceOf(k),look:k};return Object.assign({},W[k],{price:priceOf(k)});}
-function owned(k){return GEAR[k]?!!P[k]:(P.primary===k||P.secondary===k||P.melee===k);}
+function owned(k){return GEAR[k]?(!GEAR[k].stack&&!!P[k]):(P.primary===k||P.secondary===k||P.melee===k);}
+const stackN=k=>GEAR[k]&&GEAR[k].stack?(+P[k]||0):0;
 function statsHTML(k){
   if(GEAR[k])return `<p>${GEAR[k].desc}</p>`;
   const w=W[k];let rows;
@@ -836,13 +837,13 @@ function renderBuy(){
   const list=$('buyList');list.innerHTML='';
   SHOP.forEach(sec=>{const h=document.createElement('div');h.className='bgroup';h.textContent=sec.group;list.appendChild(h);
     sec.items.forEach(k=>{const it=itemInfo(k);const b=document.createElement('button');b.type='button';b.className='bitem'+(P.money<it.price&&!owned(k)?' poor':'');b.setAttribute('aria-selected',String(buySel===k));
-      b.innerHTML=`${silSVG(it.look)}<span class="nm"></span>${owned(k)?'<span class="own">已持有</span>':`<span class="pr">${fmtMoney(it.price)}</span>`}`;
+      b.innerHTML=`${silSVG(it.look)}<span class="nm"></span>${owned(k)?'<span class="own">已持有</span>':`${stackN(k)?`<span class="own">×${stackN(k)}</span>`:''}<span class="pr">${fmtMoney(it.price)}</span>`}`;
       b.querySelector('.nm').innerHTML=`${esc(it.name)}<small>${it.cls}</small>`;
       b.addEventListener('click',()=>{buySel=k;renderBuy();});b.addEventListener('dblclick',()=>{doBuy(k);});list.appendChild(b);});});
   const k=buySel,it=itemInfo(k),d=$('buyDetail');
   const stats=statsHTML(k);
   const can=!owned(k)&&P.money>=it.price&&inBuyZone(P,world);
-  const label=owned(k)?'已持有':P.money<it.price?`金幣不足（差 ${fmtMoney(it.price-P.money)}）`:`購買 ${fmtMoney(it.price)}`;
+  const label=owned(k)?'已持有':P.money<it.price?`金幣不足（差 ${fmtMoney(it.price-P.money)}）`:`${stackN(k)?`再買一個（目前 ×${stackN(k)}）`:'購買'} ${fmtMoney(it.price)}`;
   d.innerHTML=`${silSVG(it.look)}<h3>${esc(it.name)}<small>${it.cls}${!GEAR[k]?' · '+WDESC[k]:''}</small></h3>${stats}<button class="buybtn" id="buyBtn" type="button" ${can?'':'disabled'}>${label}</button>`;
   $('buyBtn').addEventListener('click',()=>doBuy(k));
   $('buyMoney').textContent=fmtMoney(P.money);
@@ -1115,8 +1116,8 @@ async function ensureNet(){
   net.on('end',m=>{if(state!=='play')return;if(m.tk)teamKills=m.tk;if(m.sc)for(const [id,k,d] of m.sc){const e=entById(id);if(e){e.kills=k;e.deaths=d;}}endMatch();});
   net.on('spawn',m=>{if(state!=='play')return;spawn(P);P.pos.set(m.x,m.y,m.z);P.yaw=m.yaw;P.pitch=0;$('deathScr').hidden=true;
     if(!locked&&!noLock&&!isTouch&&everLocked&&!paused&&!buyOpen)setPause(true);});
-  net.on('you',m=>{Object.assign(P,{hp:m.hp,money:m.money,healT:m.healT||0,kills:m.kills,deaths:m.deaths});for(const g in GEAR)P[g]=!!(m.gear&&m.gear[g]);if(buyOpen)renderBuy();});
-  net.on('bought',m=>{if(GEAR[m.key]){P[m.key]=true;if(GEAR[m.key].mag)for(const k in P.ammo)P.ammo[k].mag=Math.max(P.ammo[k].mag,magCap(P,k));}else if(W[m.key])giveWeapon(P,m.key);sfxTone([660,990],.1,.12,'triangle');if(buyOpen)renderBuy();});
+  net.on('you',m=>{Object.assign(P,{hp:m.hp,money:m.money,healT:m.healT||0,kills:m.kills,deaths:m.deaths});for(const g in GEAR){const v=m.gear&&m.gear[g];P[g]=GEAR[g].stack?(+v||0):!!v;}if(buyOpen)renderBuy();});
+  net.on('bought',m=>{if(GEAR[m.key]){P[m.key]=GEAR[m.key].stack?(+P[m.key]||0)+1:true;if(GEAR[m.key].mag)for(const k in P.ammo)P.ammo[k].mag=Math.max(P.ammo[k].mag,magCap(P,k));}else if(W[m.key])giveWeapon(P,m.key);sfxTone([660,990],.1,.12,'triangle');if(buyOpen)renderBuy();});
   net.on('hurt',m=>{if(state!=='play')return;P.hp=m.hp;P.healT=0;hurtFx({pos:{x:m.x,z:m.z}});});
   net.on('hit',m=>{hitMark(m.kill);if(!m.kill)sfxTone([1400],.05,.08,'square');});
   net.on('kill',onlineKill);

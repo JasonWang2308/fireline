@@ -54,7 +54,7 @@ export class Match {
   priceOf(k) { const base = GEAR[k] ? GEAR[k].price : W[k].price; return Math.round(base * (PRICE_MUL[this.len] || 1) / 50) * 50; }
   you(e) {
     if (e.bot) return;
-    const gear = {}; for (const g in GEAR) gear[g] = !!e[g];
+    const gear = {}; for (const g in GEAR) gear[g] = GEAR[g].stack ? (+e[g] || 0) : !!e[g];
     this.emit('you', { hp: Math.max(0, Math.ceil(e.hp)), money: e.money, gear, healT: r2(Math.max(0, e.healT)), primary: e.primary, secondary: e.secondary, kills: e.kills, deaths: e.deaths }, e.id);
   }
   posAt(e, ms) {
@@ -104,7 +104,7 @@ export class Match {
   buy(e, key) {
     if (!e.alive || !inBuyZone(e, this.world) || !(W[key] || GEAR[key]) || key === 'knife' || key === 'p9') return false;
     const pr = this.priceOf(key);
-    if (GEAR[key]) { if (e[key] || e.money < pr) return false; e.money -= pr; e[key] = true; if (GEAR[key].mag) for (const k in e.ammo) e.ammo[k].mag = Math.max(e.ammo[k].mag, magCap(e, k)); }
+    if (GEAR[key]) { if ((e[key] && !GEAR[key].stack) || e.money < pr) return false; e.money -= pr; e[key] = GEAR[key].stack ? (+e[key] || 0) + 1 : true; if (GEAR[key].mag) for (const k in e.ammo) e.ammo[k].mag = Math.max(e.ammo[k].mag, magCap(e, k)); }
     else { if (e.money < pr || e.primary === key || e.secondary === key || e.melee === key) return false; e.money -= pr; this.giveWeapon(e, key); }
     if (!e.bot) { this.emit('bought', { key }, e.id); this.you(e); }
     return true;

@@ -68,10 +68,11 @@ const bigMag=(w,mul)=>{const b=w.burst||1;return Math.round(w.mag*mul/b)*b;};
 for(const g of SHOP)if(g.mc)for(const k of g.items)W[k].magc=g.mc;
 for(const c in MAG_CLASS){
   const m=MAG_CLASS[c],ex=Object.keys(W).filter(k=>W[k].magc===c).slice(0,3).map(k=>`${W[k].name.split(' ')[0]} ${W[k].mag}→${bigMag(W[k],m.mul)}`).join('、');
-  GEAR['mag_'+c]={name:m.name,price:m.price,mag:c,mul:m.mul,desc:`${m.name.replace('擴充彈匣','')}類武器彈匣容量 +${Math.round((m.mul-1)*100)}%（${ex}）。買了之後再買同類的槍也有效。死亡後消失。`};
+  GEAR['mag_'+c]={name:m.name,price:m.price,mag:c,mul:m.mul,stack:true,desc:`${m.name.replace('擴充彈匣','')}類武器彈匣容量每買一個 +${Math.round((m.mul-1)*100)}%（${ex}），可以重複購買、沒有上限。買了之後再買同類的槍也有效。死亡後消失。`};
 }
 // magazine capacity for entity e holding weapon k (extended magazine applies per weapon class)
-function magCap(e,k){const w=W[k];if(!w||!w.mag)return 0;const g=w.magc&&e&&e['mag_'+w.magc]?GEAR['mag_'+w.magc]:null;return g?bigMag(w,g.mul):w.mag;}
+// each extended magazine bought adds another (mul-1) of the base capacity; e['mag_x'] is how many were bought (true counts as 1)
+function magCap(e,k){const w=W[k];if(!w||!w.mag)return 0;const n=w.magc&&e?+(e['mag_'+w.magc]||0):0;return n?bigMag(w,1+(GEAR['mag_'+w.magc].mul-1)*n):w.mag;}
 function headMul(v){return v&&v.helmet?HELMET_HEAD:2;}
 const DIFF={easy:{acc:.55,react:.8},std:{acc:.8,react:.5},hard:{acc:1.05,react:.3}};
 const NAMES=[['你','獵鷹','石牆','幽靈','烈風'],['毒蛇','鐵砧','野狼','雷霆','黑曜']];
